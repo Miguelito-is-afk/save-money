@@ -1,26 +1,59 @@
-// Miguel's Enhanced State Engine
-let state = JSON.parse(localStorage.getItem('miguelVaultData')) || {
+// Miguel's FinTech Engine
+let state = JSON.parse(localStorage.getItem('miguelUltraData')) || {
     balance: 0,
     history: [],
-    goal: { name: "None", target: 0, date: null },
+    goal: { name: "None", target: 0, date: null, buffer: 0 },
     income: 800,
     streak: 0,
-    lastActive: new Date().toLocaleDateString()
+    graphData: [0]
 };
+
+let chartInstance = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('current-date').innerText = new Date().toDateString();
+    initChart();
     updateUI();
 });
 
-// ADD TRANSACTION
+// INITIALIZE GROWTH GRAPH
+function initChart() {
+    const ctx = document.getElementById('balanceChart').getContext('2d');
+    chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: state.history.slice(0, 10).reverse().map(i => i.date) || ['Start'],
+            datasets: [{
+                label: 'Wealth Growth (₱)',
+                data: state.graphData.slice(-10),
+                borderColor: '#4f46e5',
+                backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                fill: true,
+                tension: 0.4,
+                pointRadius: 5
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    });
+}
+
+// EDITABLE STATS (Click to Change)
+function editStat(type) {
+    let newVal = prompt(`Enter new ${type}:`, type === 'balance' ? state.balance : state.income);
+    if (newVal !== null && !isNaN(newVal)) {
+        state[type] = parseFloat(newVal);
+        save();
+    }
+}
+
+// LOG TRANSACTIONS
 document.getElementById('transaction-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const amount = parseFloat(document.getElementById('amount').value);
     const type = document.getElementById('type').value;
 
     const entry = {
-        id: "TXN-" + Date.now(),
+        id: Date.now(),
         date: new Date().toLocaleDateString(),
         desc: document.getElementById('desc').value,
         amount: type === 'income' ? amount : -amount
@@ -28,114 +61,152 @@ document.getElementById('transaction-form').addEventListener('submit', (e) => {
 
     state.history.unshift(entry);
     state.balance += entry.amount;
+    state.graphData.push(state.balance);
     
-    // Update streak if no expenses today
     if (type === 'income') state.streak++;
     
     save();
     e.target.reset();
 });
 
-// DELETE INDIVIDUAL ITEM
-function deleteTransaction(id) {
-    const index = state.history.findIndex(item => item.id === id);
-    if (index !== -1) {
-        // Reverse the balance impact
-        state.balance -= state.history[index].amount;
-        // Remove from array
-        state.history.splice(index, 1);
-        save();
-    }
-}
-
-// GOAL UPDATE
+// GOAL MISSION UPDATER
 document.getElementById('goal-form').addEventListener('submit', (e) => {
     e.preventDefault();
     state.goal = {
         name: document.getElementById('goal-name').value,
         target: parseFloat(document.getElementById('goal-target').value),
-        date: document.getElementById('goal-date').value
+        date: document.getElementById('goal-date').value,
+        buffer: parseInt(document.getElementById('goal-buffer').value) || 0
     };
     save();
 });
 
 function save() {
-    localStorage.setItem('miguelVaultData', JSON.stringify(state));
+    localStorage.setItem('miguelUltraData', JSON.stringify(state));
     updateUI();
 }
 
 function updateUI() {
-    // 1. Core Displays
+    // 1. Text UI
     document.getElementById('total-balance').innerText = `₱${state.balance.toFixed(2)}`;
-    document.getElementById('weekly-inc').innerText = `₱${(state.income / 4).toFixed(2)}`;
-    document.getElementById('streak-count').innerText = `🔥 ${state.streak} Day Saving Streak`;
+    document.getElementById('weekly-inc').innerText = `₱${state.income.toFixed(2)}`;
+    document.getElementById('buffer-display').innerText = `${state.goal.buffer} Days`;
+    document.getElementById('streak-count').innerText = `🔥 ${state.streak} Day Streak`;
 
-    // 2. Ledger Rendering with Delete Action
+    // 2. Ledger
     const historyBody = document.getElementById('history-body');
-    historyBody.innerHTML = state.history.slice(0, 8).map(item => `
-        <tr class="fade-in">
-            <td><div class="dot ${item.amount > 0 ? 'bg-success' : 'bg-danger'}"></div></td>
-            <td class="desc-cell"><strong>${item.desc}</strong><br><small>${item.date}</small></td>
-            <td class="amount-cell ${item.amount > 0 ? 'text-success' : 'text-danger'}">
-                ${item.amount > 0 ? '+' : ''}₱${Math.abs(item.amount).toFixed(2)}
+    historyBody.innerHTML = state.history.slice(0, 5).map(item => `
+        <tr>
+            <td><i class="fas ${item.amount > 0 ? 'fa-arrow-trend-up text-success' : 'fa-arrow-trend-down text-danger'}"></i></td>
+            <td><strong>${item.desc}</strong><br><small>${item.date}</small></td>
+            <td class="${item.amount > 0 ? 'text-success' : 'text-danger'}" style="text-align:right">
+                ₱${Math.abs(item.amount).toFixed(2)}
             </td>
-            <td>
-                <button onclick="deleteTransaction('${item.id}')" class="delete-btn">
-                    <i class="fas fa-trash-can"></i>
-                </button>
+            <td style="text-align:right">
+                <button onclick="deleteTxn(${item.id})" class="delete-btn"><i class="fas fa-trash"></i></button>
             </td>
         </tr>
     `).join('');
 
-    // 3. Smart Goal & Health Analysis
-    calculateHealthAndGoals();
+    // 3. Quota Calculations (With Buffer)
+    calculateQuotas();
+    
+    // 4. Update Graph
+    if (chartInstance) {
+        chartInstance.data.labels = state.history.slice(0, 10).reverse().map(i => i.date);
+        chartInstance.data.datasets[0].data = state.graphData.slice(-10);
+        chartInstance.update();
+    }
 }
 
-function calculateHealthAndGoals() {
+function calculateQuotas() {
     const healthEl = document.getElementById('health-score');
+    const predBody = document.getElementById('prediction-body');
     let score = "A+";
 
     if (state.goal.target > 0) {
         document.getElementById('goal-name-display').innerText = state.goal.name;
+        
         const progress = Math.min((state.balance / state.goal.target) * 100, 100);
         document.getElementById('goal-progress-bar').style.width = `${progress}%`;
         document.getElementById('progress-percent').innerText = `${Math.round(progress)}%`;
 
+        // The Buffer Calculation
+        const targetDate = new Date(state.goal.date);
+        targetDate.setDate(targetDate.getDate() - state.goal.buffer); // Subtract buffer
+        
+        const today = new Date();
+        const daysLeft = Math.ceil((targetDate - today) / (1000 * 60 * 60 * 24));
         const remaining = state.goal.target - state.balance;
-        const daysLeft = Math.ceil((new Date(state.goal.date) - new Date()) / (1000 * 60 * 60 * 24));
 
         if (remaining > 0 && daysLeft > 0) {
             const dailyTarget = remaining / daysLeft;
-            const dailyIncome = state.income / 30;
+            document.getElementById('goal-stats').innerText = `₱${remaining.toFixed(2)} to reach quota`;
             
-            document.getElementById('goal-stats').innerText = `₱${remaining.toFixed(2)} left`;
-            
-            // Health Scoring Logic
-            if (dailyTarget > dailyIncome * 1.5) score = "D";
-            else if (dailyTarget > dailyIncome) score = "C";
-            else if (progress > 50) score = "A";
-            else score = "B";
+            // Health Scoring
+            const dailyIncome = (state.income / 7);
+            if (dailyTarget > dailyIncome * 1.2) score = "C-";
+            else if (dailyTarget > dailyIncome) score = "B";
+            else score = "S";
 
-            renderAlert(dailyTarget, dailyIncome);
+            renderAlert(dailyTarget, daysLeft);
+            generatePredictions(dailyTarget);
         } else if (remaining <= 0) {
-            score = "S+";
-            document.getElementById('smart-status').innerHTML = `<div class="alert success">Goal Achieved, Miguel! Proceed with purchase.</div>`;
+            score = "GOAL REACHED";
+            document.getElementById('smart-status').innerHTML = `<div class="alert success">Mission Accomplished! Quota met.</div>`;
+        } else {
+            score = "URGENT";
+            document.getElementById('smart-status').innerHTML = `<div class="alert warning">Deadline Passed or Buffer Invalid. Adjust!</div>`;
         }
     }
     healthEl.innerText = score;
 }
 
-function renderAlert(target, income) {
-    const statusDiv = document.getElementById('smart-status');
-    if (target > income) {
-        statusDiv.innerHTML = `<div class="alert warning"><i class="fas fa-bolt"></i> <strong>Critical:</strong> Save ₱${target.toFixed(2)}/day to win.</div>`;
-    } else {
-        statusDiv.innerHTML = `<div class="alert success"><i class="fas fa-check"></i> <strong>Secure:</strong> ₱${target.toFixed(2)}/day needed.</div>`;
+function generatePredictions(dailyTarget) {
+    const predBody = document.getElementById('prediction-body');
+    let rows = "";
+    let tempBalance = state.balance;
+    const dailyIncome = state.income / 7;
+
+    for (let i = 1; i <= 7; i++) {
+        let date = new Date();
+        date.setDate(date.getDate() + i);
+        tempBalance += (dailyIncome - 20); // Simulating 20 spending
+        rows += `
+            <tr>
+                <td>${date.toLocaleDateString('en-US', {weekday: 'short'})}</td>
+                <td>₱${tempBalance.toFixed(2)}</td>
+                <td class="text-success">₱${dailyTarget.toFixed(2)}</td>
+            </tr>
+        `;
+    }
+    predBody.innerHTML = rows;
+}
+
+function renderAlert(target, days) {
+    const div = document.getElementById('smart-status');
+    div.innerHTML = `
+        <div class="alert ${target > (state.income/7) ? 'warning' : 'success'}">
+            <i class="fas fa-robot"></i>
+            <div>
+                <strong>Miguel,</strong> to finish <strong>${state.goal.buffer} days early</strong>, 
+                save ₱${target.toFixed(2)} daily for ${days} days.
+            </div>
+        </div>
+    `;
+}
+
+function deleteTxn(id) {
+    const i = state.history.findIndex(t => t.id === id);
+    if (i !== -1) {
+        state.balance -= state.history[i].amount;
+        state.history.splice(i, 1);
+        save();
     }
 }
 
 document.getElementById('clear-data').addEventListener('click', () => {
-    if(confirm("Miguel, this will erase your entire ledger. Proceed?")) {
+    if (confirm("Reset everything, Miguel?")) {
         localStorage.clear();
         location.reload();
     }
