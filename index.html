@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ScholarCash Pro</title>
+    <title>Miguel's ScholarCash Pro</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
@@ -12,39 +12,49 @@
     <div class="app-shell">
         <aside class="sidebar">
             <div class="brand">
-                <i class="fas fa-wallet"></i>
-                <span>ScholarCash</span>
+                <i class="fas fa-shield-halved"></i>
+                <span>Miguel's Vault</span>
             </div>
             <nav class="nav-menu">
-                <a href="#dashboard" class="nav-link active"><i class="fas fa-chart-pie"></i> Dashboard</a>
-                <a href="#goals" class="nav-link"><i class="fas fa-target-slash"></i> Goals</a>
-                <a href="#history" class="nav-link"><i class="fas fa-history"></i> History</a>
+                <a href="#dashboard" class="nav-link active"><i class="fas fa-chart-line"></i> Analytics</a>
+                <a href="#goals" class="nav-link"><i class="fas fa-gem"></i> Premium Goals</a>
+                <a href="#history" class="nav-link"><i class="fas fa-list-check"></i> Ledger</a>
             </nav>
-            <div id="smart-status" class="status-card shadow-sm">
-                </div>
+            <div id="smart-status" class="status-card shadow-sm"></div>
+            
+            <div class="dev-tag">
+                <p>System Architect</p>
+                <strong>Miguel | PSHS-CRC</strong>
+            </div>
         </aside>
 
         <main class="main-content">
             <header class="top-bar">
-                <h1>Welcome Back, Scholar</h1>
-                <p id="current-date"></p>
+                <div class="welcome-text">
+                    <h1>Welcome Back, Miguel</h1>
+                    <p id="current-date"></p>
+                </div>
+                <div class="health-badge">
+                    <span>Health Score:</span>
+                    <strong id="health-score">A+</strong>
+                </div>
             </header>
 
             <section class="stats-grid">
                 <div class="stat-card animate-in" style="--delay: 0.1s">
                     <span class="label">Current Balance</span>
                     <h2 id="total-balance">₱0.00</h2>
-                    <i class="fas fa-vault bg-icon"></i>
+                    <div class="stat-meta" id="streak-count">🔥 0 Day Streak</div>
                 </div>
                 <div class="stat-card animate-in" style="--delay: 0.2s">
                     <span class="label">Weekly Allowance</span>
                     <h2 id="weekly-inc">₱0.00</h2>
-                    <i class="fas fa-calendar-week bg-icon"></i>
+                    <div class="stat-meta">Next refill in 2 days</div>
                 </div>
                 <div class="stat-card animate-in" style="--delay: 0.3s">
-                    <span class="label">Projected End-Month</span>
+                    <span class="label">Monthly Forecast</span>
                     <h2 id="forecast-val">₱0.00</h2>
-                    <i class="fas fa-arrow-trend-up bg-icon"></i>
+                    <div class="stat-meta" id="forecast-diff">+₱0.00 vs goal</div>
                 </div>
             </section>
 
@@ -52,7 +62,7 @@
                 <div class="flex-column">
                     <section class="card goal-card animate-in" style="--delay: 0.4s">
                         <div class="card-header">
-                            <h3><i class="fas fa-bullseye"></i> Active Goal: <span id="goal-name-display">None</span></h3>
+                            <h3><i class="fas fa-crown text-warning"></i> <span id="goal-name-display">No Goal Set</span></h3>
                         </div>
                         <div class="progress-wrapper">
                             <div class="progress-container">
@@ -60,24 +70,24 @@
                             </div>
                             <div class="progress-labels">
                                 <span id="progress-percent">0%</span>
-                                <span id="goal-stats">₱0 needed</span>
+                                <span id="goal-stats">₱0.00 to go</span>
                             </div>
                         </div>
                     </section>
 
                     <section class="card animate-in" style="--delay: 0.5s">
-                        <h3><i class="fas fa-plus-circle"></i> Quick Log</h3>
+                        <h3><i class="fas fa-pen-nib"></i> New Entry</h3>
                         <form id="transaction-form" class="smart-form">
                             <div class="input-group">
-                                <input type="text" id="desc" placeholder="What did you buy?" required>
-                                <input type="number" id="amount" placeholder="Amount (₱)" required>
+                                <input type="text" id="desc" placeholder="Item/Source" required>
+                                <input type="number" id="amount" placeholder="₱ Amount" required>
                             </div>
                             <div class="input-group">
                                 <select id="type">
                                     <option value="expense">Expense</option>
                                     <option value="income">Income</option>
                                 </select>
-                                <button type="submit" class="btn-primary">Add Transaction</button>
+                                <button type="submit" class="btn-primary">Log Transaction</button>
                             </div>
                         </form>
                     </section>
@@ -85,26 +95,32 @@
 
                 <div class="flex-column">
                     <section class="card animate-in" style="--delay: 0.6s">
-                        <h3><i class="fas fa-calendar-plus"></i> New Goal</h3>
+                        <h3><i class="fas fa-bullseye"></i> Set Mission</h3>
                         <form id="goal-form" class="smart-form">
-                            <input type="text" id="goal-name" placeholder="Target Item (e.g. Roblox)" required>
+                            <input type="text" id="goal-name" placeholder="Target (e.g. Roblox Premium)" required>
                             <input type="number" id="goal-target" placeholder="Price (₱)" required>
                             <input type="date" id="goal-date" required>
-                            <button type="submit" class="btn-secondary">Save Goal</button>
+                            <button type="submit" class="btn-secondary">Update Mission</button>
                         </form>
                     </section>
 
                     <section class="card animate-in" style="--delay: 0.7s">
-                        <h3><i class="fas fa-list-ul"></i> Recent Activity</h3>
-                        <div class="table-container">
+                        <div class="card-header-flex">
+                            <h3><i class="fas fa-receipt"></i> Recent Transactions</h3>
+                            <button id="clear-data" class="text-btn">Reset All</button>
+                        </div>
+                        <div class="ledger-container">
                             <table id="history-table">
                                 <tbody id="history-body"></tbody>
                             </table>
                         </div>
-                        <button id="clear-data" class="btn-ghost">Clear All Data</button>
                     </section>
                 </div>
             </div>
+            
+            <footer class="main-footer">
+                <p>&copy; 2026 Miguel's Digital Finance Suite. Proprietary Tech for PSHS-CRC Scholars.</p>
+            </footer>
         </main>
     </div>
     <script src="js/script.js"></script>
