@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ScholarCash | Smart Budgeter</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <aside class="sidebar">
+            <h2>ScholarCash</h2>
+            <nav>
+                <ul>
+                    <li><a href="#dashboard">Dashboard</a></li>
+                    <li><a href="#goals">Savings Goals</a></li>
+                    <li><a href="#planner">Purchase Planner</a></li>
+                </ul>
+            </nav>
+            <div id="smart-status" class="status-card">
+                </div>
+        </aside>
+
+        <main class="content">
+            <section id="dashboard" class="grid-stats">
+                <div class="card">
+                    <h3>Current Balance</h3>
+                    <p id="total-balance">₱0.00</p>
+                </div>
+                <div class="card">
+                    <h3>Weekly Income</h3>
+                    <p id="weekly-inc">₱0.00</p>
+                </div>
+                <div class="card">
+                    <h3>Monthly Forecast</h3>
+                    <p id="forecast-val">₱0.00</p>
+                </div>
+            </section>
+
+            <section id="goals" class="card goal-section">
+                <h3>Active Goal: <span id="goal-name-display">None</span></h3>
+                <div class="progress-container">
+                    <div id="goal-progress-bar" class="progress-bar"></div>
+                </div>
+                <p id="goal-stats">Reach your goal by: --</p>
+            </section>
+
+            <section class="grid-forms">
+                <div class="card">
+                    <h4>Add Transaction</h4>
+                    <form id="transaction-form">
+                        <input type="text" id="desc" placeholder="Description (e.g., Siomai)" required>
+                        <input type="number" id="amount" placeholder="Amount (₱)" required>
+                        <select id="type">
+                            <option value="expense">Expense</option>
+                            <option value="income">Income</option>
+                        </select>
+                        <button type="submit">Log Entry</button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h4>Set Purchase Goal</h4>
+                    <form id="goal-form">
+                        <input type="text" id="goal-name" placeholder="Item (e.g., Roblox Premium)" required>
+                        <input type="number" id="goal-target" placeholder="Price (₱)" required>
+                        <input type="date" id="goal-date" required>
+                        <button type="submit">Set Goal</button>
+                    </form>
+                </div>
+            </section>
+
+            <section class="card">
+                <h4>Recent Activity</h4>
+                <div class="table-wrapper">
+                    <table id="history-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Item</th>
+                                <th>Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-body"></tbody>
+                    </table>
+                </div>
+                <button id="clear-data" class="btn-danger">Reset Everything</button>
+            </section>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
