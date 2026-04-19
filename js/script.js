@@ -69,16 +69,32 @@ function detectCategoryAndAnomaly(desc, amount) {
 // UI LOGIC
 function toggleSettings() {
     const modal = document.getElementById('settings-modal');
+    
     if (modal.classList.contains('active')) {
+        // CLOSE MODAL
         modal.classList.remove('active');
-        setTimeout(() => modal.style.display = 'none', 400); // Wait for fade out
+        setTimeout(() => modal.style.display = 'none', 400); 
     } else {
+        // OPEN MODAL
         modal.style.display = 'flex';
-        // Force reflow
+        // Force reflow for animation
         void modal.offsetWidth;
         modal.classList.add('active');
+
+        // Sync standard inputs
         document.getElementById('settings-name').value = state.settings.name;
         document.getElementById('dark-mode-toggle').checked = state.settings.darkMode;
+
+        // SYNC DAY TOGGLES:
+        // This ensures the buttons look "Active" based on your saved schedule
+        document.querySelectorAll('.day-btn').forEach(btn => {
+            const day = parseInt(btn.dataset.day);
+            if (state.incomeSchedule.includes(day)) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
     }
 }
 
