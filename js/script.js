@@ -46,11 +46,18 @@ function checkFuelPanel() {
     const isPayday = state.incomeSchedule.includes(today);
     const alreadyConfirmed = state.lastFuelDate === todayDateString;
 
-    if (isPayday && !alreadyConfirmed) {
-        const numPaydays = state.incomeSchedule.length || 1;
-        const amount = state.income / numPaydays;
+    if (isPayday && !alreadyConfirmed && state.goal.target > 0) {
+        // Calculate the daily drain requirement right here
+        const targetDate = new Date(state.goal.date);
+        targetDate.setDate(targetDate.getDate() - state.goal.buffer);
+        const daysLeft = Math.max(1, Math.ceil((targetDate - new Date()) / (1000 * 60 * 60 * 24)));
+        const remaining = state.goal.target - state.balance;
         
-        document.getElementById('fuel-message').innerText = `Neural link confirms today is a Payday. Confirming receipt of ₱${amount.toFixed(2)}?`;
+        // This is your ₱15.80 (or whatever the current requirement is)
+        const dailyReq = Math.max(0, remaining / daysLeft);
+        
+        document.getElementById('fuel-message').innerText = `Goal: ${state.goal.name}. Neural link suggests syncing ₱${dailyReq.toFixed(2)} to stay on track. Confirm?`;
+        fuelPanel.dataset.pendingAmount = dailyReq; // Temporarily store it
         fuelPanel.style.display = 'block';
     } else {
         fuelPanel.style.display = 'none';
@@ -58,32 +65,27 @@ function checkFuelPanel() {
 }
 
 function confirmFuel(received) {
+    const fuelPanel = document.getElementById('fuel-panel');
     const todayDateString = new Date().toLocaleDateString();
-    const numPaydays = state.incomeSchedule.length || 1;
-    const amount = state.income / numPaydays;
+    const amount = parseFloat(fuelPanel.dataset.pendingAmount) || 0;
 
-    if (received) {
-        // Log it as income
+    if (received && amount > 0) {
         state.balance += amount;
         state.history.unshift({
             id: Date.now(),
             date: todayDateString,
-            desc: "⛽ DAILY FUEL SYNC",
+            desc: `⛽ GOAL FUEL: ${state.goal.name}`,
             amount: amount,
-            icon: '💰',
+            icon: '🎯',
             spendType: 'income'
         });
         state.graphData.push(state.balance);
         state.streak++;
-        alert(`System Energized. ₱${amount.toFixed(2)} added to Liquid Assets.`);
-    } else {
-        // Penalty or Note
-        alert("Warning: Fuel Deficit Detected. Adjusting tactical advisory for zero-income scenario.");
-        // Optional: You could add a 'Missing' note to history
+        alert(`Mission Synced. ₱${amount.toFixed(2)} allocated to Asset Acquisition.`);
     }
 
     state.lastFuelDate = todayDateString;
-    save(); // This handles updateUI and hiding the panel
+    save(); 
 }
 
 // V4 CATEGORIZATION & ANOMALY ENGINE
