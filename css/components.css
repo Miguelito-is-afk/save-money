@@ -89,3 +89,31 @@ table td { padding: 12px 8px; border-bottom: 1px solid var(--border-color); }
 .hover-lift:hover { transform: translate3d(0, -5px, 0); box-shadow: var(--shadow-lg); }
 .hover-lift-slight:hover { transform: translate3d(0, -2px, 0); }
 .hover-scale:hover { transform: scale(1.05); }
+
+/* Progress Bars */
+.progress-container {
+    width: 100%;
+    height: 8px;
+    background: var(--progress-bg);
+    border-radius: 10px;
+    margin: 10px 0;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    transition: width 1s ease-in-out;
+}
+
+/* Category Analytics Styles */
+.analytic-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.level-up-anim {
+    animation: pulse 0.5s ease-in-out 3;
+}
