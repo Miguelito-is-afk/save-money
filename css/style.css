@@ -1,7 +1,7 @@
 /* AETHER CORE v4.0: QUANTUM BUILD 
    Optimized for Dimensity processing | Zero-Lag Protocol */
 
-:root {
+   :root {
     /* Neural Palette */
     --primary: #6366f1;
     --primary-glow: rgba(99, 102, 241, 0.5);
@@ -397,12 +397,12 @@ body {
 .btn-danger {
     background: var(--danger);
     color: white;
-    padding: 6px 12px;
-    border-radius: 6px;
+    padding: 14px;
+    border-radius: var(--radius-sm);
     font-weight: 600;
     border: none;
     cursor: pointer;
-    font-size: 0.8rem;
+    width: 100%;
 }
 
 .text-btn {
@@ -546,7 +546,7 @@ th {
     display: none;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
+    z-index: 9999; /* Boosted to ensure it stays on top */
     opacity: 0;
     transition: opacity var(--transition-smooth);
 }
@@ -606,6 +606,7 @@ th {
     display: inline-block;
     width: 50px;
     height: 26px;
+    flex-shrink: 0;
 }
 
 .switch input {
