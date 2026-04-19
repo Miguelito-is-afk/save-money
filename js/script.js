@@ -203,7 +203,7 @@ function calculateAetherLogic() {
     const actionZone = document.getElementById('action-zone');
     actionZone.innerHTML = ""; 
 
-    const dailyIncome = state.income / 7;
+    const dailyIncome = state.income / 5;
     const projectedBurn = (state.trueDailyBurn && state.trueDailyBurn > 0) ? state.trueDailyBurn : (dailyIncome * 0.2);
     const disposableIncome = dailyIncome - projectedBurn; 
 
@@ -241,8 +241,8 @@ function calculateAetherLogic() {
                 healthEl.innerText = "OPTIMAL";
                 healthEl.style.color = "var(--primary)";
                 adviceEl.innerHTML = `
-                    🎯 Goal Drain: <strong>₱${dailyReq.toFixed(2)}/day</strong><br>
-                    🔥 Living Burn: <strong>₱${projectedBurn.toFixed(2)}/day</strong><br>
+                    🎯 Save Today: <strong>₱${dailyReq.toFixed(2)}/day</strong><br>
+                    🔥 Snack Budget: <strong>₱${projectedBurn.toFixed(2)}/day</strong><br>
                     🏦 <strong>General Savings Potential: ₱${surplus.toFixed(2)}/day</strong>
                     <br><span style="font-size:0.85em; color:var(--text-muted);">You can stash ₱${(surplus*7).toFixed(2)} extra a week!</span>
                 `;
