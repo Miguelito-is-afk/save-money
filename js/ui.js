@@ -1,21 +1,97 @@
 let chartInstance = null;
 
-function applySettings() {
-    document.body.className = state.settings.darkMode ? 'dark-mode' : 'light-mode';
-    document.getElementById('user-display').innerText = state.settings.name;
-    document.getElementById('dark-mode-toggle').checked = state.settings.darkMode;
-    document.getElementById('settings-name').value = state.settings.name;
-}
-
 function updateUI() {
+    // Basic Stats
     document.getElementById('total-balance').innerText = `₱${state.balance.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
     document.getElementById('weekly-inc').innerText = `₱${state.income.toLocaleString()}`;
     document.getElementById('streak-count').innerText = `🔥 ${state.streak} Day Pulse`;
     
+    // Level Update
+    const levelBadge = document.getElementById('aura-level');
+    levelBadge.innerText = `LVL ${state.level}`;
+    
+    // Calculate Monthly Burn
+    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+    const monthlyBurn = state.history
+        .filter(t => t.id > thirtyDaysAgo && t.amount < 0)
+        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+    document.getElementById('monthly-burn').innerText = `₱${monthlyBurn.toLocaleString()}`;
+
     renderLedger();
     renderGoalsAndAether();
     renderAnalytics();
     if (chartInstance) updateChart();
+}
+
+function renderGoalsAndAether() {
+    const container = document.getElementById('goals-container');
+    const adviceEl = document.getElementById('smart-advice');
+    
+    // Strategic Reserve calculation (20% of fuel)
+    const reserveAmount = state.income * (state.savingsPercent / 100);
+
+    if (state.goals.length === 0) {
+        container.innerHTML = "<p class='text-muted' style='text-align:center;'>No active missions.</p>";
+        adviceEl.innerText = `System optimal. Recommendation: Allocate ₱${reserveAmount.toFixed(2)} to your Strategic Reserve this week.`;
+        return;
+    }
+
+    let totalDailyNeeded = 0;
+    let html = state.goals.map(goal => {
+        let daysLeft = Math.max(1, Math.ceil((new Date(goal.date) - new Date()) / 86400000));
+        
+        // Progress Bar Math: How much of the current balance "covers" this goal?
+        // (Simplified: We show progress based on current balance vs target)
+        let progress = Math.min(100, (state.balance / goal.target) * 100).toFixed(1);
+        let remaining = Math.max(0, goal.target - state.balance); 
+        let dailyNeeded = remaining / daysLeft;
+        totalDailyNeeded += dailyNeeded;
+
+        return `
+            <div class="goal-item animate-in">
+                <div class="flex-between">
+                    <strong>${goal.name}</strong>
+                    <span>₱${goal.target.toLocaleString()}</span>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-fill" style="width: ${progress}%"></div>
+                </div>
+                <div class="flex-between" style="font-size: 0.75rem; color: var(--text-muted);">
+                    <span>${progress}% Synced</span>
+                    <span>₱${dailyNeeded.toFixed(2)}/day needed</span>
+                </div>
+            </div>`;
+    }).join('');
+
+    container.innerHTML = html;
+    
+    // Smarter Advisory
+    if (state.balance < totalDailyNeeded * 7) {
+        adviceEl.innerText = `Tactical Alert: Current assets low. To hit all missions, you must save ₱${totalDailyNeeded.toFixed(2)} daily. Minimize "Burn" in non-essential sectors.`;
+    } else {
+        adviceEl.innerText = `Condition: Green. Your asset growth vector is healthy. Daily mission allocation: ₱${totalDailyNeeded.toFixed(2)}.`;
+    }
+}
+
+function renderAnalytics() {
+    const analyticsGrid = document.getElementById('category-analytics');
+    const categories = {};
+    
+    state.history.filter(t => t.amount < 0).forEach(t => {
+        categories[t.icon] = (categories[t.icon] || 0) + Math.abs(t.amount);
+    });
+
+    if (Object.keys(categories).length === 0) {
+        analyticsGrid.innerHTML = `<div class="text-muted" style="text-align:center;">No burn data recorded.</div>`;
+        return;
+    }
+
+    analyticsGrid.innerHTML = Object.entries(categories).map(([icon, amount]) => `
+        <div class="analytic-row">
+            <span>${icon} Sector</span>
+            <strong>₱${amount.toLocaleString()}</strong>
+        </div>
+    `).join('');
 }
 
 function renderLedger() {
@@ -36,36 +112,6 @@ function renderLedger() {
     `).join('');
 }
 
-function renderGoalsAndAether() {
-    const container = document.getElementById('goals-container');
-    const adviceEl = document.getElementById('smart-advice');
-    
-    if (state.goals.length === 0) {
-        container.innerHTML = "<p class='text-muted' style='text-align:center;'>No active missions.</p>";
-        adviceEl.innerText = "System optimal. Awaiting new tactical directives.";
-        return;
-    }
-
-    let totalDailyNeeded = 0;
-    let html = state.goals.map(goal => {
-        let daysLeft = Math.max(1, Math.ceil((new Date(goal.date) - new Date()) / 86400000));
-        let remaining = Math.max(0, goal.target); 
-        totalDailyNeeded += (remaining / daysLeft);
-        return `
-            <div class="goal-item flex-between">
-                <strong>${goal.name}</strong>
-                <span>₱${goal.target.toLocaleString()}</span>
-            </div>`;
-    }).join('');
-
-    container.innerHTML = html;
-    adviceEl.innerText = `To reach your active missions, allocate ₱${totalDailyNeeded.toFixed(2)} daily.`;
-}
-
-function renderAnalytics() {
-    const analyticsGrid = document.getElementById('category-analytics');
-    analyticsGrid.innerHTML = `<div class="analytic-box text-muted" style="text-align:center; padding: 2rem 0;">Analytics Core Online.</div>`;
-}
 
 function initChart() {
     const ctx = document.getElementById('balanceChart').getContext('2d');
