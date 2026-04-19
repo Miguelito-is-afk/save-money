@@ -96,17 +96,23 @@
                 </div>
 
                 <div class="flex-column">
-                    <section class="card goal-card animate-in fade-delay-5 hover-lift-slight">
-                        <h3><i class="fas fa-crosshairs"></i> CURRENT MISSION: <span id="goal-name-display">VOID</span></h3>
-                        <div class="progress-wrapper">
-                            <div class="progress-container">
-                                <div id="goal-progress-bar" class="progress-bar aura-bg"></div>
-                            </div>
-                            <div class="progress-labels">
-                                <span id="progress-percent">0%</span>
-                                <span id="goal-stats">₱0.00 remaining</span>
-                            </div>
-                        </div>
+                    <section class="card animate-in fade-delay-5">
+                      <h3><i class="fas fa-crosshairs"></i> DYNAMIC RESOURCE ALLOCATION</h3>
+                      <div id="goals-list-container" class="mt-1">
+                          </div>
+                      
+                      <hr style="margin: 1.5rem 0; opacity: 0.1;">
+                      
+                      <form id="goal-form" class="smart-form">
+                          <p style="font-size: 0.8rem; font-weight: 800; margin-bottom: 0.5rem; color: var(--primary);">INITIALIZE NEW MISSION</p>
+                          <input type="text" id="goal-name" placeholder="Target Objective" required>
+                          <input type="number" id="goal-target" placeholder="Value (₱)" required>
+                          <div class="input-group">
+                              <input type="date" id="goal-date" required>
+                              <button type="submit" class="btn-primary hover-glow">DEPLOY</button>
+                          </div>
+                      </form>
+                  </section>
                         
                         <form id="goal-form" class="smart-form">
                             <input type="text" id="goal-name" placeholder="Target Objective" required>
