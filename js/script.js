@@ -6,7 +6,8 @@ let state = JSON.parse(localStorage.getItem('aetherCoreData')) || {
     generalSavings: 0, // NEW: Track money outside of specific goals
     history: [],
     goal: { name: "VOID", target: 0, date: null, buffer: 0 },
-    income: 800,
+    income: 200,
+    incomeSchedule: [1, 2, 3, 4],
     streak: 0,
     graphData: [0],
     settings: { darkMode: false, name: "MIGUEL | PSHS-CRC" }
@@ -19,6 +20,21 @@ document.addEventListener('DOMContentLoaded', () => {
     applySettings();
     initChart();
     updateUI();
+});
+
+// Handle clicking the day buttons
+document.querySelectorAll('.day-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const day = parseInt(btn.dataset.day);
+        if (state.incomeSchedule.includes(day)) {
+            state.incomeSchedule = state.incomeSchedule.filter(d => d !== day);
+            btn.classList.remove('active');
+        } else {
+            state.incomeSchedule.push(day);
+            btn.classList.add('active');
+        }
+        save();
+    });
 });
 
 // V4 CATEGORIZATION & ANOMALY ENGINE
@@ -203,10 +219,17 @@ function calculateAetherLogic() {
     const actionZone = document.getElementById('action-zone');
     actionZone.innerHTML = ""; 
 
-    const dailyIncome = state.income / 5;
-    const projectedBurn = (state.trueDailyBurn && state.trueDailyBurn > 0) ? state.trueDailyBurn : (dailyIncome * 0.2);
-    const disposableIncome = dailyIncome - projectedBurn; 
-
+    // 1. Payday Detection
+    const today = new Date().getDay(); 
+    const isPayday = state.incomeSchedule.includes(today);
+    
+    // 2. Calculate Fuel per Active Day (e.g., ₱200 / 4 days = ₱50/day)
+    const numPaydays = state.incomeSchedule.length || 1;
+    const amountPerPayday = state.income / numPaydays;
+    
+    // 3. Current Daily Context
+    const dailyIncome = isPayday ? amountPerPayday : 0;
+    
     if (state.goal.target > 0) {
         document.getElementById('goal-name-display').innerText = state.goal.name;
         const progress = Math.min((state.balance / state.goal.target) * 100, 100);
@@ -217,49 +240,58 @@ function calculateAetherLogic() {
         targetDate.setDate(targetDate.getDate() - state.goal.buffer);
         const daysLeft = Math.max(1, Math.ceil((targetDate - new Date()) / (1000 * 60 * 60 * 24)));
         const remaining = state.goal.target - state.balance;
+        const dailyReq = remaining / daysLeft;
 
         document.getElementById('goal-stats').innerText = remaining > 0 ? `₱${remaining.toLocaleString()} remaining` : "Quota Met";
 
         if (remaining <= 0) {
             healthEl.innerText = "MAX RESONANCE";
             healthEl.style.color = "var(--success)";
-            adviceEl.innerText = `Objective achieved. Target [${state.goal.name}] is ready for acquisition.`;
+            adviceEl.innerText = `Objective achieved. ${state.goal.name} is ready for acquisition.`;
             actionZone.innerHTML = `<button onclick="redeemGoal()" class="claim-btn">REDEEM ASSET</button>`;
-        } else {
-            const dailyReq = remaining / daysLeft;
-            const surplus = disposableIncome - dailyReq; 
+        } 
+        // --- NON-PAYDAY MODE (Fridays/Weekends) ---
+        else if (!isPayday) {
+            healthEl.innerText = "NEURAL STANDBY";
+            healthEl.style.color = "var(--text-muted)";
+            adviceEl.innerHTML = `Today is a <strong>Non-Payday</strong>. No income expected.<br>
+            Current daily drain required for goal: ₱${dailyReq.toFixed(2)}. Stay frosty.`;
+            generatePredictions(dailyReq, 0, 0); 
+        } 
+        // --- ACTIVE PAYDAY MODE (School Days) ---
+        else {
+            const projectedBurn = (state.trueDailyBurn && state.trueDailyBurn > 0) ? state.trueDailyBurn : (dailyIncome * 0.2);
+            const surplus = dailyIncome - projectedBurn - dailyReq;
 
             if (dailyReq > dailyIncome) {
                 healthEl.innerText = "CRITICAL DEFICIT";
                 healthEl.style.color = "var(--danger)";
-                adviceEl.innerHTML = `Goal requires <strong>₱${dailyReq.toFixed(2)}/day</strong>, but you only make <strong>₱${dailyIncome.toFixed(2)}</strong>. Increase income or extend deadline.`;
+                adviceEl.innerHTML = `Goal requires <strong>₱${dailyReq.toFixed(2)}/day</strong>, but you only make <strong>₱${dailyIncome.toFixed(2)}</strong>. Extend deadline!`;
             } else if (surplus < 0) {
                 healthEl.innerText = "UNSTABLE";
                 healthEl.style.color = "var(--warning)";
-                adviceEl.innerHTML = `Goal requires <strong>₱${dailyReq.toFixed(2)}/day</strong>. You are short ₱${Math.abs(surplus).toFixed(2)} daily. Cut back on your ₱${projectedBurn.toFixed(2)} daily burn!`;
+                adviceEl.innerHTML = `Goal takes ₱${dailyReq.toFixed(2)}. You only have ₱${(dailyIncome - dailyReq).toFixed(2)} left for food/fares. Tighten the belt!`;
             } else {
                 healthEl.innerText = "OPTIMAL";
                 healthEl.style.color = "var(--primary)";
                 adviceEl.innerHTML = `
-                    🎯 Save Today: <strong>₱${dailyReq.toFixed(2)}/day</strong><br>
-                    🔥 Snack Budget: <strong>₱${projectedBurn.toFixed(2)}/day</strong><br>
-                    🏦 <strong>General Savings Potential: ₱${surplus.toFixed(2)}/day</strong>
-                    <br><span style="font-size:0.85em; color:var(--text-muted);">You can stash ₱${(surplus*7).toFixed(2)} extra a week!</span>
+                    🎯 Save Today: <strong>₱${dailyReq.toFixed(2)}</strong><br>
+                    🔥 Snack Budget: <strong>₱${(dailyIncome - dailyReq).toFixed(2)}</strong><br>
+                    🏦 <strong>Weekly Surplus: ₱${(surplus * numPaydays).toFixed(2)}</strong>
                 `;
             }
             generatePredictions(dailyReq, surplus, projectedBurn);
         }
     } else {
+        // --- NO ACTIVE GOAL ---
         document.getElementById('goal-progress-bar').style.width = `0%`;
         document.getElementById('progress-percent').innerText = `0%`;
         document.getElementById('goal-stats').innerText = `Awaiting Data`;
 
-        const totalSurplus = disposableIncome;
         healthEl.innerText = "ACCUMULATING";
         healthEl.style.color = "var(--success)";
-        adviceEl.innerHTML = `No active goal. Wealth-Building Mode.<br>
-        Based on your burn rate, you can save <strong>₱${totalSurplus.toFixed(2)}/day</strong> directly into general savings.`;
-        generatePredictions(0, totalSurplus, projectedBurn);
+        adviceEl.innerHTML = `No active mission. Wealth-Building Mode Active.`;
+        generatePredictions(0, dailyIncome, 0);
     }
 }
 
@@ -267,7 +299,6 @@ function calculateAetherLogic() {
 function generatePredictions(dailyTarget, dailySurplus, projectedBurn) {
     const predBody = document.getElementById('prediction-body');
     
-    // Dynamically update HTML Table Headers to match the new smart output
     const tableHead = document.querySelector('.prediction-table thead tr');
     if (tableHead) {
         tableHead.innerHTML = `<th>Timeline</th><th>Liquid Balance</th><th>Projected Savings</th>`;
@@ -277,19 +308,26 @@ function generatePredictions(dailyTarget, dailySurplus, projectedBurn) {
     let tempBalance = state.balance;
     let tempSavings = state.generalSavings || 0; 
     
-    const actualDailySavings = dailySurplus > 0 ? dailySurplus : 0;
-    const dailyIncome = state.income / 7;
+    // Get the actual amount per school day
+    const numPaydays = state.incomeSchedule.length || 1;
+    const amountPerPayday = state.income / numPaydays;
     
     for (let i = 1; i <= 7; i++) {
         let date = new Date();
         date.setDate(date.getDate() + i);
+        const dayOfWeek = date.getDay(); // 0-6
         
-        tempBalance += dailyIncome;         
-        tempBalance -= projectedBurn;       
-        
-        if (actualDailySavings > 0) {
-            tempSavings += actualDailySavings;
-            tempBalance -= actualDailySavings; 
+        // ONLY add income if that day is in your schedule
+        if (state.incomeSchedule.includes(dayOfWeek)) {
+            tempBalance += amountPerPayday;
+            
+            // Only apply burn and surplus on days you actually HAVE money
+            tempBalance -= projectedBurn;
+            
+            if (dailySurplus > 0) {
+                tempSavings += dailySurplus;
+                tempBalance -= dailySurplus; 
+            }
         }
         
         const balanceColor = tempBalance < 0 ? "var(--danger)" : "var(--text-main)";
