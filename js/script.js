@@ -21,14 +21,24 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // AI CATEGORIZATION ENGINE
+// UPGRADED AI CATEGORIZATION ENGINE
 function detectCategory(desc) {
     const d = desc.toLowerCase();
-    if (d.includes('food') || d.includes('lunch') || d.includes('snack') || d.includes('burger')) return '🍔';
-    if (d.includes('fare') || d.includes('jeep') || d.includes('transpo') || d.includes('trike')) return '🚙';
-    if (d.includes('codm') || d.includes('roblox') || d.includes('game') || d.includes('cp')) return '🎮';
-    if (d.includes('school') || d.includes('print') || d.includes('project') || d.includes('book')) return '📚';
-    if (d.includes('clothes') || d.includes('shirt') || d.includes('shoes')) return '👕';
-    return '💳'; // Default
+    
+    // Word boundary regex ensures "scooter" doesn't trigger "school"
+    const categories = {
+        '🍔': /\b(food|lunch|snack|burger|pizza|eat|meal|coffee|drink|water)\b/,
+        '🚙': /\b(fare|jeep|transpo|trike|gas|taxi|grab|bus|commute|ride)\b/,
+        '🎮': /\b(codm|roblox|game|cp|steam|play|skin|valorant|topup)\b/,
+        '📚': /\b(school|print|project|book|tuition|supplies|pen|paper)\b/,
+        '👕': /\b(clothes|shirt|shoes|apparel|fit|pants|mall|thrifting)\b/,
+        '🎬': /\b(movie|cinema|netflix|ticket|concert|sub)\b/
+    };
+
+    for (let [icon, regex] of Object.entries(categories)) {
+        if (regex.test(d)) return icon;
+    }
+    return '💳'; // Default Anomaly
 }
 
 // UI LOGIC
@@ -133,21 +143,33 @@ function save() {
     updateUI();
 }
 
+// UPGRADED BURN RATE ANALYTICS
 function calculateBurnRate() {
-    // Look at last 7 transactions that were expenses
-    const recentExpenses = state.history.filter(t => t.amount < 0).slice(0, 10);
-    const totalBurn = recentExpenses.reduce((sum, t) => sum + Math.abs(t.amount), 0);
+    // Filter last 30 days of expenses
+    const now = Date.now();
+    const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
+    const recentExpenses = state.history.filter(t => t.amount < 0 && t.id > thirtyDaysAgo);
     const burnText = document.getElementById('burn-rate-display');
     
-    if (recentExpenses.length > 2) {
-        const avgBurn = totalBurn / recentExpenses.length;
-        burnText.innerHTML = `<i class="fas fa-fire"></i> Est. Burn Rate: ₱${avgBurn.toFixed(2)} / entry`;
-        burnText.style.color = avgBurn > (state.income / 7) ? '#fca5a5' : '#86efac';
+    if (recentExpenses.length > 1) {
+        const totalBurn = recentExpenses.reduce((sum, t) => sum + Math.abs(t.amount), 0);
+        
+        // Calculate the exact time span of these expenses
+        const oldestExpense = Math.min(...recentExpenses.map(t => t.id));
+        const daysSpan = Math.max(1, (now - oldestExpense) / (1000 * 60 * 60 * 24));
+        
+        // Global state injection for the Prediction Engine to use
+        state.trueDailyBurn = totalBurn / daysSpan; 
+
+        burnText.innerHTML = `<i class="fas fa-fire"></i> True Burn: ₱${state.trueDailyBurn.toFixed(2)} / day`;
+        burnText.style.color = state.trueDailyBurn > (state.income / 7) ? '#fca5a5' : '#86efac';
     } else {
-        burnText.innerText = "Insufficient data to calculate burn rate.";
-        burnText.style.color = "white";
+        state.trueDailyBurn = 0;
+        burnText.innerText = "Data insufficient for velocity mapping.";
+        burnText.style.color = "var(--text-muted)";
     }
 }
+
 
 function updateUI() {
     // Text Data
@@ -166,6 +188,7 @@ function updateUI() {
     if (chartInstance) updateChart();
 }
 
+// UPGRADED SYSTEM CORE LOGIC
 function calculateAetherLogic() {
     const healthEl = document.getElementById('health-score');
     const adviceEl = document.getElementById('smart-advice');
@@ -191,11 +214,16 @@ function calculateAetherLogic() {
             adviceEl.innerText = `Objective achieved. Target [${state.goal.name}] is ready for acquisition.`;
             actionZone.innerHTML = `<button onclick="redeemGoal()" class="claim-btn">REDEEM ASSET</button>`;
         } else if (daysLeft > 0) {
-            const daily = remaining / daysLeft;
-            adviceEl.innerText = `Save ₱${daily.toFixed(2)} daily to secure objective ${state.goal.buffer} days early.`;
-            healthEl.innerText = (daily > state.income/7) ? "UNSTABLE" : "STABLE";
-            healthEl.style.color = (daily > state.income/7) ? "var(--warning)" : "var(--primary)";
-            generatePredictions(daily);
+            const dailyReq = remaining / daysLeft;
+            const dailyIncome = state.income / 7;
+            const safeToSpend = Math.max(0, dailyIncome - dailyReq); // New Metric!
+
+            adviceEl.innerHTML = `Save <strong>₱${dailyReq.toFixed(2)}</strong> daily.<br>Safe to spend limit: <strong>₱${safeToSpend.toFixed(2)}/day</strong>.`;
+            
+            healthEl.innerText = (dailyReq > dailyIncome) ? "UNSTABLE" : "STABLE";
+            healthEl.style.color = (dailyReq > dailyIncome) ? "var(--warning)" : "var(--primary)";
+            
+            generatePredictions(dailyReq);
         } else {
             adviceEl.innerText = "Temporal deadline breached. Re-calibrate mission parameters.";
             healthEl.innerText = "CRITICAL";
@@ -209,25 +237,39 @@ function calculateAetherLogic() {
     }
 }
 
+// UPGRADED PREDICTIVE ENGINE
 function generatePredictions(dailyTarget) {
     const predBody = document.getElementById('prediction-body');
     let rows = "";
     let tempBalance = state.balance;
-    const avgDailyIncome = state.income / 7;
+    const dailyIncome = state.income / 7;
+    
+    // Fallback to 20% burn buffer only if there's no historical data yet
+    const projectedBurn = (state.trueDailyBurn && state.trueDailyBurn > 0) 
+        ? state.trueDailyBurn 
+        : (dailyIncome * 0.2);
+
+    const netDailyVelocity = dailyIncome - projectedBurn;
     
     for (let i = 1; i <= 7; i++) {
         let date = new Date();
         date.setDate(date.getDate() + i);
-        tempBalance += (avgDailyIncome * 0.8); // Assuming 20% burn rate buffer
+        
+        // Predict based on ACTUAL spending habits
+        tempBalance += netDailyVelocity; 
+        
+        const balanceColor = tempBalance < 0 ? "var(--danger)" : "var(--text-main)";
+
         rows += `
             <tr class="table-row-hover hover-lift-slight">
                 <td>${date.toLocaleDateString('en-US', {weekday: 'short', month: 'short', day: 'numeric'})}</td>
-                <td>₱${tempBalance.toFixed(2)}</td>
+                <td style="color: ${balanceColor};">₱${tempBalance.toFixed(2)}</td>
                 <td style="color: var(--success); font-weight: bold;">₱${dailyTarget.toFixed(2)}</td>
             </tr>`;
     }
     predBody.innerHTML = rows;
 }
+
 
 function renderLedger() {
     const body = document.getElementById('history-body');
