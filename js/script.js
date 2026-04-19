@@ -8,30 +8,15 @@ function initializeState() {
     try {
         saved = JSON.parse(localStorage.getItem('aetherCoreDataV4'));
     } catch (e) {
-        console.error("Corrupted save detected. Resetting...");
-        localStorage.removeItem('aetherCoreDataV4');
+        console.error("Corrupted save detected. Resetting to safe state...");
         saved = null;
     }
     
-    // Legacy Migration (from v3 to v4)
-    if (!saved) {
-        let oldData = JSON.parse(localStorage.getItem('aetherCoreData'));
-        if (oldData) {
-            saved = oldData;
-            saved.goals = [];
-            if (saved.goal && saved.goal.target > 0) {
-                saved.goals.push({ id: Date.now(), name: saved.goal.name, target: saved.goal.target, date: saved.goal.date || "2026-12-31", priority: 2 });
-            }
-            delete saved.goal;
-        }
-    }
-
-    // Default fresh state
-    return saved || {
+    // Ensure default structure if saved data is missing or incomplete
+    const defaultState = {
         balance: 0,
         history: [],
         goals: [
-            // Defaults based on typical usage context
             { id: 101, name: "Monthsary Gift (8th)", target: 500, priority: 3, date: "2026-05-08" },
             { id: 102, name: "Roblox Premium", target: 500, priority: 1, date: "2026-06-01" }
         ],
@@ -40,6 +25,16 @@ function initializeState() {
         graphData: [0],
         settings: { darkMode: true, name: "MIGUEL | PSHS-CRC" }
     };
+
+    if (!saved) return defaultState;
+
+    // Safety checks for legacy or missing keys
+    saved.history = saved.history || [];
+    saved.goals = saved.goals || [];
+    saved.settings = saved.settings || defaultState.settings;
+    saved.graphData = saved.graphData || [0];
+    
+    return saved;
 }
 
 let state = initializeState();
@@ -49,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('current-date').innerText = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     applySettings();
     initChart();
-    recalculateBalance(); // Ensure everything is mathematically sound on load
+    recalculateBalance(); 
     updateUI();
 });
 
@@ -70,7 +65,7 @@ function toggleSettings() {
     const modal = document.getElementById('settings-modal');
     modal.classList.toggle('active');
     if(modal.classList.contains('active')) {
-        document.getElementById('settings-name').value = state.settings.name;
+        document.getElementById('settings-name').value = state.settings.name || "MIGUEL | PSHS-CRC";
         document.getElementById('dark-mode-toggle').checked = state.settings.darkMode;
     }
 }
@@ -109,6 +104,7 @@ document.getElementById('transaction-form').addEventListener('submit', (e) => {
 
     state.history.unshift({
         id: Date.now(),
+        timestamp: Date.now(), // Reliable timestamp for analytics
         date: new Date().toLocaleDateString(),
         desc: desc,
         amount: entryAmount,
@@ -118,7 +114,7 @@ document.getElementById('transaction-form').addEventListener('submit', (e) => {
     if (type === 'income') state.streak++;
     e.target.reset();
     
-    recalculateBalance(); // Recalc everything instead of blindly adding
+    recalculateBalance(); 
     save();
 });
 
@@ -141,11 +137,14 @@ document.getElementById('edit-entry-form').addEventListener('submit', (e) => {
     const entry = state.history.find(e => e.id === id);
     if(entry) {
         entry.desc = document.getElementById('edit-desc').value;
-        entry.amount = parseFloat(document.getElementById('edit-amount').value);
-        entry.icon = entry.amount > 0 ? '💰' : detectCategory(entry.desc);
-        recalculateBalance();
-        save();
-        closeEditModal();
+        const newAmount = parseFloat(document.getElementById('edit-amount').value);
+        if(!isNaN(newAmount)) {
+            entry.amount = newAmount;
+            entry.icon = entry.amount > 0 ? '💰' : detectCategory(entry.desc);
+            recalculateBalance();
+            save();
+            closeEditModal();
+        }
     }
 });
 
@@ -161,7 +160,7 @@ function deleteEntry() {
 function recalculateBalance() {
     state.balance = state.history.reduce((sum, item) => sum + item.amount, 0);
     
-    // Rebuild graph
+    // Rebuild graph completely to prevent mismatch
     state.graphData = [0];
     let running = 0;
     const chrono = [...state.history].reverse();
@@ -195,6 +194,7 @@ function redeemGoal(id) {
     // Log it as an expense (asset acquired)
     state.history.unshift({
         id: Date.now(),
+        timestamp: Date.now(),
         date: new Date().toLocaleDateString(),
         desc: `🏆 SECURED: ${goal.name}`,
         amount: -goal.target,
@@ -220,9 +220,14 @@ function deleteGoal(id) {
 
 function editStat(type) {
     let newVal = prompt(`Update Configuration [${type.toUpperCase()}]:`, state[type]);
-    if (newVal !== null && !isNaN(newVal)) {
-        state[type] = parseFloat(newVal);
-        save();
+    if (newVal !== null) {
+        let parsedVal = parseFloat(newVal);
+        if (!isNaN(parsedVal) && parsedVal >= 0) {
+            state[type] = parsedVal;
+            save();
+        } else {
+            alert("Invalid input. Please enter a valid number.");
+        }
     }
 }
 
@@ -257,13 +262,12 @@ function renderGoalsAndAether() {
     let closestAdvice = "";
 
     sortedGoals.forEach((goal, index) => {
-        // Allocation logic
         let allocated = Math.min(availableBalance, goal.target);
         allocated = Math.max(0, allocated); // Prevent negative allocation
         availableBalance -= allocated;
         
-        let progress = Math.min((allocated / goal.target) * 100, 100);
-        let remaining = goal.target - allocated;
+        let progress = (goal.target > 0) ? Math.min((allocated / goal.target) * 100, 100) : 0;
+        let remaining = Math.max(0, goal.target - allocated);
 
         let priorityLabel = goal.priority === 3 ? "badge-high" : (goal.priority === 2 ? "badge-med" : "badge-low");
         let priorityText = goal.priority === 3 ? "HIGH" : (goal.priority === 2 ? "MED" : "LOW");
@@ -294,13 +298,12 @@ function renderGoalsAndAether() {
             </div>
         `;
 
-        // Set primary advice based on top priority goal
         if(index === 0 && remaining > 0) {
             const daysLeft = Math.ceil((new Date(goal.date) - new Date()) / (1000 * 60 * 60 * 24));
             if(daysLeft > 0) {
                 let daily = remaining / daysLeft;
                 closestAdvice = `Focus: [${goal.name}]. Save ₱${daily.toFixed(2)} daily to secure.`;
-                if(daily > state.income/7) overallHealth = "UNSTABLE";
+                if(state.income > 0 && daily > state.income/7) overallHealth = "UNSTABLE";
             } else {
                 closestAdvice = `Temporal breach on [${goal.name}]. Recalculate vectors.`;
                 overallHealth = "CRITICAL";
@@ -323,11 +326,13 @@ function renderGoalsAndAether() {
 }
 
 function renderAnalytics() {
-    // Get last 30 days of expenses
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
     
-    const recentExpenses = state.history.filter(t => t.amount < 0 && new Date(t.date) >= thirtyDaysAgo);
+    const recentExpenses = state.history.filter(t => {
+        // Fallback to parsing date string if timestamp is missing from older data
+        const time = t.timestamp ? t.timestamp : new Date(t.date).getTime();
+        return t.amount < 0 && time >= thirtyDaysAgo;
+    });
     
     let totalBurn = 0;
     let categories = {};
@@ -345,7 +350,6 @@ function renderAnalytics() {
         return;
     }
 
-    // Sort categories by highest spend
     const sortedCats = Object.entries(categories).sort((a, b) => b[1] - a[1]).slice(0,4);
     
     analyticsGrid.innerHTML = sortedCats.map(([icon, amount]) => `
@@ -355,14 +359,14 @@ function renderAnalytics() {
         </div>
     `).join('');
 
-    // Update burn rate text on advisory
     const burnText = document.getElementById('burn-rate-display');
     if(recentExpenses.length > 2) {
-        const avgBurn = totalBurn / 30; // rough daily
+        const avgBurn = totalBurn / 30; 
         burnText.innerHTML = `<i class="fas fa-fire"></i> Est. Burn Rate: ₱${avgBurn.toFixed(2)} / day`;
-        burnText.style.color = avgBurn > (state.income / 7) ? '#fca5a5' : '#86efac';
+        burnText.style.color = (state.income > 0 && avgBurn > (state.income / 7)) ? '#fca5a5' : '#86efac';
     } else {
         burnText.innerText = "Awaiting more expense data.";
+        burnText.style.color = '#fff';
     }
 }
 
@@ -387,7 +391,8 @@ function updateUI() {
     document.getElementById('weekly-inc').innerText = `₱${state.income.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
     document.getElementById('streak-count').innerText = `🔥 ${state.streak} Log Streak`;
     
-    const level = Math.max(1, Math.floor(state.balance / 500) + 1);
+    // Added Math.max constraint just in case balance is heavily negative
+    const level = Math.max(1, Math.floor(Math.max(0, state.balance) / 500) + 1);
     document.getElementById('aura-level').innerText = `LVL ${level}`;
 
     renderLedger();
@@ -399,9 +404,19 @@ function updateUI() {
 // ------------------ GRAPHICS ENGINE ------------------
 
 function updateChart() {
-    chartInstance.data.labels = state.history.slice(0, 15).reverse().map(i => i.date) || ['Sync'];
-    chartInstance.data.datasets[0].data = state.graphData.slice(-15);
-    chartInstance.update('active'); 
+    if(!chartInstance) return;
+
+    // Fix array mismatch to guarantee graph scales accurately
+    const sliceLimit = Math.min(15, state.history.length);
+    const historySlice = state.history.slice(0, sliceLimit).reverse();
+    
+    // Labels must match data points length. graphData starts with a '0' state.
+    const labels = historySlice.length > 0 ? ['Start', ...historySlice.map(i => i.date)] : ['Start'];
+    const dataSlice = state.graphData.slice(-(sliceLimit + 1));
+
+    chartInstance.data.labels = labels;
+    chartInstance.data.datasets[0].data = dataSlice;
+    chartInstance.update(); 
 }
 
 function initChart() {
@@ -413,7 +428,7 @@ function initChart() {
     chartInstance = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: ['Sync'],
+            labels: ['Start'],
             datasets: [{
                 label: 'Asset Vector',
                 data: state.graphData,
@@ -453,7 +468,7 @@ function exportData() {
 
 document.getElementById('clear-data').addEventListener('click', () => {
     if (confirm("WARNING: Initiating total system purge. All data will be destroyed. Proceed?")) {
-        localStorage.clear();
+        localStorage.removeItem('aetherCoreDataV4');
         location.reload();
     }
 });
