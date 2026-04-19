@@ -9,6 +9,10 @@
     --danger: #ef4444;
     --warning: #f59e0b;
     --info: #0ea5e9;
+    --progress-bg: rgba(99, 102, 241, 0.1);
+    --progress-fill: linear-gradient(90deg, #6366f1, #a855f7);
+    --safe-color: #10b981;
+    --locked-color: #f59e0b;
     
     /* Surface Colors */
     --bg-main: #f8fafc;
