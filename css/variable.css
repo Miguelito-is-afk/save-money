@@ -1,5 +1,3 @@
-/* variable.css*/
-
 :root {
     /* Neural Palette - Light Mode */
     --primary: #6366f1;
@@ -31,7 +29,6 @@
     /* Motion Engine */
     --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-smooth: 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    --transition-bounce: 0.5s cubic-bezier(0.68, -0.6, 0.32, 1.6);
 }
 
 /* Dark Mode Overrides */
