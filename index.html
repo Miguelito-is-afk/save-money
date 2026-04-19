@@ -88,7 +88,7 @@
                         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">System auto-allocates liquid assets based on priority tier.</p>
                         
                         <div id="goals-container">
-                            </div>
+                        </div>
 
                         <button onclick="toggleGoalModal()" class="btn-secondary hover-glow" style="margin-top: 1rem;">+ Add New Mission</button>
                     </section>
@@ -115,7 +115,7 @@
                     <section class="card animate-in fade-delay-7 hover-lift-slight">
                         <h3><i class="fas fa-chart-pie"></i> Spending Analytics</h3>
                         <div class="analytics-grid" id="category-analytics">
-                            </div>
+                        </div>
                     </section>
 
                     <section class="card animate-in fade-delay-7 hover-lift-slight">
@@ -138,7 +138,7 @@
         <div class="modal-card animate-scale-up">
             <div class="modal-header">
                 <h2>System Configuration</h2>
-                <button onclick="toggleSettings()" class="close-btn hover-scale">&times;</button>
+                <button type="button" onclick="toggleSettings()" class="close-btn hover-scale">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="setting-item">
@@ -161,11 +161,11 @@
         <div class="modal-card animate-scale-up">
             <div class="modal-header">
                 <h2>Initialize Mission</h2>
-                <button onclick="toggleGoalModal()" class="close-btn hover-scale">&times;</button>
+                <button type="button" onclick="toggleGoalModal()" class="close-btn hover-scale">&times;</button>
             </div>
             <form id="new-goal-form" class="smart-form">
                 <input type="text" id="goal-name" placeholder="Target Objective (e.g., Roblox Premium)" required>
-                <input type="number" id="goal-target" placeholder="Value (₱)" required step="0.01">
+                <input type="number" id="goal-target" placeholder="Value (₱)" required step="0.01" min="0.01">
                 <input type="date" id="goal-date" required>
                 <select id="goal-priority" required>
                     <option value="3">High Priority (Fund First)</option>
@@ -181,7 +181,7 @@
         <div class="modal-card animate-scale-up">
             <div class="modal-header">
                 <h2>Edit Ledger Entry</h2>
-                <button onclick="closeEditModal()" class="close-btn hover-scale">&times;</button>
+                <button type="button" onclick="closeEditModal()" class="close-btn hover-scale">&times;</button>
             </div>
             <form id="edit-entry-form" class="smart-form">
                 <input type="hidden" id="edit-id">
@@ -189,7 +189,7 @@
                 <input type="number" id="edit-amount" placeholder="Amount (Negative for expense)" required step="0.01">
                 <div style="display: flex; gap: 10px; margin-top: 1rem;">
                     <button type="submit" class="btn-primary hover-glow">Save Changes</button>
-                    <button type="button" class="btn-secondary" onclick="deleteEntry()">Delete Entry</button>
+                    <button type="button" class="btn-danger hover-glow" onclick="deleteEntry()">Delete Entry</button>
                 </div>
             </form>
         </div>
