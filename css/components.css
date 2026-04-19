@@ -117,3 +117,54 @@ table td { padding: 12px 8px; border-bottom: 1px solid var(--border-color); }
 .level-up-anim {
     animation: pulse 0.5s ease-in-out 3;
 }
+
+/* Dynamic Goal Cards */
+.goal-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    transition: var(--transition-smooth);
+}
+
+.goal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+
+.goal-name { font-weight: 700; font-size: 1rem; color: var(--text-main); }
+.goal-days { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+
+/* The Progress Bar */
+.neural-progress-container {
+    height: 12px;
+    background: var(--progress-bg);
+    border-radius: 6px;
+    margin: 12px 0;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+.neural-progress-fill {
+    height: 100%;
+    background: var(--progress-fill);
+    box-shadow: 0 0 15px var(--primary-glow);
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.goal-footer {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+}
+
+.allocation-badge {
+    padding: 2px 8px;
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--primary);
+    border-radius: 4px;
+    font-weight: 700;
+}
