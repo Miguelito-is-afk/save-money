@@ -1,10 +1,11 @@
-// EVENT LISTENERS & ACTIONS
-// app.js
 document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('current-date').innerText = new Date().toDateString();
+    // Format date properly
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    document.getElementById('current-date').innerText = new Date().toLocaleDateString(undefined, options);
+    
     applySettings();
-    initChart();
     recalculateBalance(); 
+    initChart();
     updateUI();
 });
 
@@ -36,9 +37,11 @@ document.getElementById('new-goal-form').addEventListener('submit', (e) => {
         priority: document.getElementById('goal-priority').value
     });
     save();
-    document.getElementById('goal-modal').classList.remove('active');
+    document.getElementById('new-goal-form').reset();
+    toggleGoalModal();
 });
 
+// UI Toggles
 function toggleSettings() { document.getElementById('settings-modal').classList.toggle('active'); }
 function toggleGoalModal() { document.getElementById('goal-modal').classList.toggle('active'); }
 
@@ -51,19 +54,25 @@ function saveSettings() {
 }
 
 function editStat(type) {
-    let val = prompt(`Enter new ${type}:`, state[type]);
-    if (val) { state[type] = parseFloat(val); save(); }
+    let val = prompt(`Enter new amount:`, state[type]);
+    if (val && !isNaN(val)) { 
+        state[type] = parseFloat(val); 
+        save(); 
+    }
 }
 
 function exportData() {
-    const blob = new Blob([JSON.stringify(state)], {type: "application/json"});
+    const blob = new Blob([JSON.stringify(state, null, 2)], {type: "application/json"});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = "aether_vault.json";
+    a.download = `aether_vault_backup_${new Date().toISOString().split('T')[0]}.json`;
     a.click();
 }
 
 document.getElementById('clear-data').addEventListener('click', () => {
-    if(confirm("Purge system?")) { localStorage.clear(); location.reload(); }
+    if(confirm("CRITICAL WARNING: Purge system data entirely? This cannot be undone.")) { 
+        localStorage.removeItem('aetherCoreDataV5'); 
+        location.reload(); 
+    }
 });
