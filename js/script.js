@@ -4,8 +4,7 @@
 let state = JSON.parse(localStorage.getItem('aetherCoreData')) || {
     balance: 0,
     history: [],
-    goals: [],
-    activeGoalIndex: 0,
+    goal: { name: "VOID", target: 0, date: null, buffer: 0 },
     income: 800,
     streak: 0,
     graphData: [0],
@@ -21,17 +20,6 @@ document.addEventListener('DOMContentLoaded', () => {
     updateUI();
 });
 
-// CORE RECALCULATION PROTOCOL (Prevents Data Drift)
-function recalculateEverything() {
-    state.balance = state.history.reduce((acc, t) => acc + t.amount, 0);
-    state.graphData = [0]; 
-    let tempBal = 0;
-    [...state.history].reverse().forEach(t => {
-        tempBal += t.amount;
-        state.graphData.push(tempBal);
-    });
-}
-
 // AI CATEGORIZATION ENGINE
 function detectCategory(desc) {
     const d = desc.toLowerCase();
@@ -40,7 +28,7 @@ function detectCategory(desc) {
     if (d.includes('codm') || d.includes('roblox') || d.includes('game') || d.includes('cp')) return '🎮';
     if (d.includes('school') || d.includes('print') || d.includes('project') || d.includes('book')) return '📚';
     if (d.includes('clothes') || d.includes('shirt') || d.includes('shoes')) return '👕';
-    return '💳'; 
+    return '💳'; // Default
 }
 
 // UI LOGIC
@@ -48,9 +36,10 @@ function toggleSettings() {
     const modal = document.getElementById('settings-modal');
     if (modal.classList.contains('active')) {
         modal.classList.remove('active');
-        setTimeout(() => modal.style.display = 'none', 400); 
+        setTimeout(() => modal.style.display = 'none', 400); // Wait for fade out
     } else {
         modal.style.display = 'flex';
+        // Force reflow
         void modal.offsetWidth;
         modal.classList.add('active');
         document.getElementById('settings-name').value = state.settings.name;
@@ -78,28 +67,20 @@ function applySettings() {
 
 // REDEMPTION PROTOCOL
 function redeemGoal() {
-    const activeGoal = state.goals[state.activeGoalIndex];
-    if (!activeGoal) return;
-
-    const cost = activeGoal.target;
-    if (state.balance < cost) {
-        alert("QUANTUM ERROR: Insufficient Liquid Assets to secure this mission.");
-        return;
-    }
+    const cost = state.goal.target;
+    state.balance -= cost;
     
     state.history.unshift({
         id: Date.now(),
         date: new Date().toLocaleDateString(),
-        desc: `🏆 SECURED: ${activeGoal.name}`,
+        desc: `🏆 SECURED: ${state.goal.name}`,
         amount: -cost,
         icon: '🎯'
     });
 
-    // Remove the claimed goal and reset index safely
-    state.goals.splice(state.activeGoalIndex, 1);
-    state.activeGoalIndex = Math.max(0, state.goals.length - 1);
+    state.goal = { name: "VOID", target: 0, date: null, buffer: 0 };
+    state.graphData.push(state.balance);
     
-    recalculateEverything();
     save();
     alert("System Overload: Mission Accomplished. Asset acquired.");
 }
@@ -119,48 +100,23 @@ document.getElementById('transaction-form').addEventListener('submit', (e) => {
         icon: type === 'income' ? '💰' : detectCategory(desc)
     });
 
+    state.balance += (type === 'income' ? amount : -amount);
+    state.graphData.push(state.balance);
     if (type === 'income') state.streak++;
     
-    recalculateEverything();
     save();
     e.target.reset();
 });
 
-function editHistoryItem(id) {
-    const tx = state.history.find(t => t.id === id);
-    if (!tx) return;
-
-    const newDesc = prompt("Edit description:", tx.desc);
-    if (newDesc === null) return;
-
-    const newAmount = parseFloat(prompt("Edit amount (Positive for Income, Negative for Expense):", tx.amount));
-    if (isNaN(newAmount)) return;
-
-    tx.desc = newDesc;
-    tx.amount = newAmount;
-    tx.icon = detectCategory(newDesc);
-
-    recalculateEverything();
-    save();
-}
-
 document.getElementById('goal-form').addEventListener('submit', (e) => {
     e.preventDefault();
-
-    const newGoal = {
-        id: Date.now(),
+    state.goal = {
         name: document.getElementById('goal-name').value,
         target: parseFloat(document.getElementById('goal-target').value),
         date: document.getElementById('goal-date').value,
-        buffer: parseInt(document.getElementById('goal-buffer').value) || 0,
-        progress: 0
+        buffer: parseInt(document.getElementById('goal-buffer').value) || 0
     };
-
-    state.goals.push(newGoal);
-    state.activeGoalIndex = state.goals.length - 1;
-
     save();
-    e.target.reset();
 });
 
 // SYSTEM CORE UPDATES
@@ -168,7 +124,6 @@ function editStat(type) {
     let newVal = prompt(`Update Configuration [${type.toUpperCase()}]:`, type === 'balance' ? state.balance : state.income);
     if (newVal !== null && !isNaN(newVal)) {
         state[type] = parseFloat(newVal);
-        if (type === 'balance') recalculateEverything();
         save();
     }
 }
@@ -179,6 +134,7 @@ function save() {
 }
 
 function calculateBurnRate() {
+    // Look at last 7 transactions that were expenses
     const recentExpenses = state.history.filter(t => t.amount < 0).slice(0, 10);
     const totalBurn = recentExpenses.reduce((sum, t) => sum + Math.abs(t.amount), 0);
     const burnText = document.getElementById('burn-rate-display');
@@ -194,41 +150,10 @@ function calculateBurnRate() {
 }
 
 function updateUI() {
-    const predictionBody = document.getElementById("prediction-body");
-    const activeGoal = state.goals[state.activeGoalIndex];
-    
-    // Projections Setup
-    if (predictionBody) {
-        predictionBody.innerHTML = "";
-        let projected = state.balance;
-        for (let i = 1; i <= 7; i++) {
-            projected += (state.income / 7);
-            predictionBody.innerHTML += `
-                <tr>
-                    <td>Day ${i}</td>
-                    <td>₱${projected.toFixed(2)}</td>
-                    <td>${activeGoal ? "₱" + Math.max(0, activeGoal.target - projected).toFixed(2) : "N/A"}</td>
-                </tr>
-            `;
-        }
-    }
-
-    const goalSelector = document.getElementById("goal-selector");
-    if (goalSelector) {
-        goalSelector.innerHTML = state.goals.map((g, i) =>
-            `<option value="${i}" ${i === state.activeGoalIndex ? "selected" : ""}>
-                ${g.name}
-            </option>`
-        ).join('');
-    }
-
-    // Text Data Updates
+    // Text Data
     document.getElementById('total-balance').innerText = `₱${state.balance.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
     document.getElementById('weekly-inc').innerText = `₱${state.income.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-    
-    const bufferDisplay = document.getElementById('buffer-display');
-    if (bufferDisplay) bufferDisplay.innerText = `${activeGoal ? activeGoal.buffer : 0} Days`;
-    
+    document.getElementById('buffer-display').innerText = `${state.goal.buffer} Days`;
     document.getElementById('streak-count').innerText = `🔥 ${state.streak} Day Pulse`;
     
     // Aura Gamification (Level up every 500 saved)
@@ -241,78 +166,77 @@ function updateUI() {
     if (chartInstance) updateChart();
 }
 
-function switchGoal(index) {
-    state.activeGoalIndex = parseInt(index);
-    save();
-}
-
 function calculateAetherLogic() {
-    const activeGoal = state.goals[state.activeGoalIndex];
     const healthEl = document.getElementById('health-score');
     const adviceEl = document.getElementById('smart-advice');
     const actionZone = document.getElementById('action-zone');
-    
-    if (actionZone) actionZone.innerHTML = ""; 
+    actionZone.innerHTML = ""; 
 
-    if (activeGoal && activeGoal.target > 0) {
-        const goalNameDisplay = document.getElementById('goal-name-display');
-        if (goalNameDisplay) goalNameDisplay.innerText = activeGoal.name;
-        
-        const progress = Math.min((state.balance / activeGoal.target) * 100, 100);
-        
-        const progressBar = document.getElementById('goal-progress-bar');
-        if (progressBar) progressBar.style.width = `${progress}%`;
-        
-        const progressPercent = document.getElementById('progress-percent');
-        if (progressPercent) progressPercent.innerText = `${Math.round(progress)}%`;
+    if (state.goal.target > 0) {
+        document.getElementById('goal-name-display').innerText = state.goal.name;
+        const progress = Math.min((state.balance / state.goal.target) * 100, 100);
+        document.getElementById('goal-progress-bar').style.width = `${progress}%`;
+        document.getElementById('progress-percent').innerText = `${Math.round(progress)}%`;
 
-        const targetDate = new Date(activeGoal.date);
-        targetDate.setDate(targetDate.getDate() - activeGoal.buffer);
+        const targetDate = new Date(state.goal.date);
+        targetDate.setDate(targetDate.getDate() - state.goal.buffer);
         const daysLeft = Math.ceil((targetDate - new Date()) / (1000 * 60 * 60 * 24));
-        const remaining = activeGoal.target - state.balance;
+        const remaining = state.goal.target - state.balance;
 
-        const goalStats = document.getElementById('goal-stats');
-        if (goalStats) goalStats.innerText = remaining > 0 ? `₱${remaining.toLocaleString()} remaining` : "Quota Met";
+        document.getElementById('goal-stats').innerText = remaining > 0 ? `₱${remaining.toLocaleString()} remaining` : "Quota Met";
 
         if (remaining <= 0) {
             healthEl.innerText = "MAX RESONANCE";
             healthEl.style.color = "var(--success)";
-            adviceEl.innerText = `Objective achieved. Target [${activeGoal.name}] is ready for acquisition.`;
-            if (actionZone) actionZone.innerHTML = `<button onclick="redeemGoal()" class="claim-btn">REDEEM ASSET</button>`;
+            adviceEl.innerText = `Objective achieved. Target [${state.goal.name}] is ready for acquisition.`;
+            actionZone.innerHTML = `<button onclick="redeemGoal()" class="claim-btn">REDEEM ASSET</button>`;
         } else if (daysLeft > 0) {
             const daily = remaining / daysLeft;
-            adviceEl.innerText = `Save ₱${daily.toFixed(2)} daily to secure objective ${activeGoal.buffer} days early.`;
+            adviceEl.innerText = `Save ₱${daily.toFixed(2)} daily to secure objective ${state.goal.buffer} days early.`;
             healthEl.innerText = (daily > state.income/7) ? "UNSTABLE" : "STABLE";
             healthEl.style.color = (daily > state.income/7) ? "var(--warning)" : "var(--primary)";
+            generatePredictions(daily);
         } else {
             adviceEl.innerText = "Temporal deadline breached. Re-calibrate mission parameters.";
             healthEl.innerText = "CRITICAL";
             healthEl.style.color = "var(--danger)";
         }
     } else {
-        const progressBar = document.getElementById('goal-progress-bar');
-        if (progressBar) progressBar.style.width = `0%`;
+        document.getElementById('goal-progress-bar').style.width = `0%`;
         adviceEl.innerText = "Awaiting input. Initialize a target mission to begin synchronization.";
         healthEl.innerText = "STANDBY";
         healthEl.style.color = "var(--text-muted)";
     }
 }
 
+function generatePredictions(dailyTarget) {
+    const predBody = document.getElementById('prediction-body');
+    let rows = "";
+    let tempBalance = state.balance;
+    const avgDailyIncome = state.income / 7;
+    
+    for (let i = 1; i <= 7; i++) {
+        let date = new Date();
+        date.setDate(date.getDate() + i);
+        tempBalance += (avgDailyIncome * 0.8); // Assuming 20% burn rate buffer
+        rows += `
+            <tr class="table-row-hover hover-lift-slight">
+                <td>${date.toLocaleDateString('en-US', {weekday: 'short', month: 'short', day: 'numeric'})}</td>
+                <td>₱${tempBalance.toFixed(2)}</td>
+                <td style="color: var(--success); font-weight: bold;">₱${dailyTarget.toFixed(2)}</td>
+            </tr>`;
+    }
+    predBody.innerHTML = rows;
+}
+
 function renderLedger() {
     const body = document.getElementById('history-body');
-    if (!body) return;
-    
     body.innerHTML = state.history.slice(0, 6).map(item => `
         <tr class="table-row-hover hover-lift-slight">
             <td style="font-size: 1.2rem;">${item.icon || '💳'}</td>
             <td><strong>${item.desc}</strong><br><small style="color: var(--text-muted)">${item.date}</small></td>
             <td style="text-align:right; font-weight: 700; color: ${item.amount > 0 ? 'var(--success)' : 'var(--text-main)'}">
                 ${item.amount > 0 ? '+' : ''}₱${Math.abs(item.amount).toFixed(2)}
-            </td>
-            <td style="text-align:right;">
-                <button class="icon-btn" onclick="editHistoryItem(${item.id})">
-                    <i class="fas fa-pen"></i>
-                </button>
             </td>
         </tr>
     `).join('');
@@ -322,12 +246,13 @@ function renderLedger() {
 function updateChart() {
     chartInstance.data.labels = state.history.slice(0, 15).reverse().map(i => i.date) || ['Sync'];
     chartInstance.data.datasets[0].data = state.graphData.slice(-15);
-    chartInstance.update(); 
+    chartInstance.update('active'); // smoother update animation
 }
 
 function initChart() {
     const ctx = document.getElementById('balanceChart').getContext('2d');
     
+    // Hardware accelerated gradient
     const gradient = ctx.createLinearGradient(0, 0, 0, 400);
     gradient.addColorStop(0, 'rgba(99, 102, 241, 0.4)');
     gradient.addColorStop(1, 'rgba(99, 102, 241, 0.0)');
@@ -341,7 +266,7 @@ function initChart() {
                 data: state.graphData,
                 borderColor: '#6366f1',
                 borderWidth: 3,
-                tension: 0.4, 
+                tension: 0.4, // Smooth curves
                 fill: true,
                 backgroundColor: gradient,
                 pointBackgroundColor: '#a855f7',
