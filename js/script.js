@@ -4,7 +4,14 @@
 
 // Data Migration & Initialization
 function initializeState() {
-    let saved = JSON.parse(localStorage.getItem('aetherCoreDataV4'));
+    let saved;
+    try {
+        saved = JSON.parse(localStorage.getItem('aetherCoreDataV4'));
+    } catch (e) {
+        console.error("Corrupted save detected. Resetting...");
+        localStorage.removeItem('aetherCoreDataV4');
+        saved = null;
+    }
     
     // Legacy Migration (from v3 to v4)
     if (!saved) {
