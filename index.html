@@ -3,23 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AETHER CORE v3 | Quantum Vault</title>
+    <title>AETHER CORE v4 | Quantum Vault</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="light-mode">
+<body class="dark-mode">
     <div class="app-shell">
         <aside class="sidebar">
             <div class="brand hover-scale">
                 <i class="fas fa-atom aura-pulse"></i>
-                <span>AETHER CORE</span>
+                <span>AETHER v4</span>
             </div>
             <nav class="nav-menu">
-                <a href="#" class="nav-link active hover-lift"><i class="fas fa-layer-group"></i> Dashboard</a>
+                <a href="#" class="nav-link active hover-lift"><i class="fas fa-layer-group"></i> Command Center</a>
                 <a href="#" class="nav-link hover-lift" onclick="toggleSettings()"><i class="fas fa-sliders"></i> System Config</a>
-                <a href="#" class="nav-link hover-lift" onclick="exportData()"><i class="fas fa-download"></i> Data Export</a>
+                <a href="#" class="nav-link hover-lift" onclick="exportData()"><i class="fas fa-download"></i> Backup Data</a>
             </nav>
             
             <div class="system-tag hover-lift">
@@ -55,23 +55,22 @@
                 <div class="stat-card animate-in fade-delay-2 hover-lift">
                     <div class="card-header-flex">
                         <span class="label">Liquid Assets</span>
-                        <button onclick="editStat('balance')" class="icon-btn"><i class="fas fa-pen"></i></button>
                     </div>
-                    <h2 id="total-balance" class="counter-up">₱0.00</h2>
+                    <h2 id="total-balance">₱0.00</h2>
                     <div class="stat-meta" id="streak-count">🔥 0 Day Pulse</div>
                 </div>
                 <div class="stat-card animate-in fade-delay-3 hover-lift">
                     <div class="card-header-flex">
-                        <span class="label">Weekly Fuel</span>
-                        <button onclick="editStat('income')" class="icon-btn"><i class="fas fa-pen"></i></button>
+                        <span class="label">Weekly Fuel Target</span>
+                        <button onclick="editStat('income')" class="icon-btn" title="Edit Expected Weekly Income"><i class="fas fa-pen"></i></button>
                     </div>
                     <h2 id="weekly-inc">₱0.00</h2>
                     <div class="stat-meta">Income Stream</div>
                 </div>
                 <div class="stat-card animate-in fade-delay-4 hover-lift">
-                    <span class="label">Safety Buffer</span>
-                    <h2 id="buffer-display">0 Days</h2>
-                    <div class="stat-meta">Early Completion Target</div>
+                    <span class="label">Total Burn (30 Days)</span>
+                    <h2 id="monthly-burn">₱0.00</h2>
+                    <div class="stat-meta">Expense Analytics</div>
                 </div>
             </section>
 
@@ -85,46 +84,23 @@
                     </section>
 
                     <section class="card animate-in fade-delay-6 hover-lift-slight">
-                        <h3><i class="fas fa-satellite-dish"></i> 7-Day Wealth Projection</h3>
-                        <table class="prediction-table">
-                            <thead>
-                                <tr><th>Sequence</th><th>Projected Balance</th><th>Required Goal</th></tr>
-                            </thead>
-                            <tbody id="prediction-body"></tbody>
-                        </table>
+                        <h3><i class="fas fa-crosshairs"></i> Dynamic Resource Allocation (DRA)</h3>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">System auto-allocates liquid assets based on priority tier.</p>
+                        
+                        <div id="goals-container">
+                            </div>
+
+                        <button onclick="toggleGoalModal()" class="btn-secondary hover-glow" style="margin-top: 1rem;">+ Add New Mission</button>
                     </section>
                 </div>
 
                 <div class="flex-column">
-                    <section class="card goal-card animate-in fade-delay-5 hover-lift-slight">
-                        <h3><i class="fas fa-crosshairs"></i> CURRENT MISSION: <span id="goal-name-display">VOID</span></h3>
-                        <div class="progress-wrapper">
-                            <div class="progress-container">
-                                <div id="goal-progress-bar" class="progress-bar aura-bg"></div>
-                            </div>
-                            <div class="progress-labels">
-                                <span id="progress-percent">0%</span>
-                                <span id="goal-stats">₱0.00 remaining</span>
-                            </div>
-                        </div>
-                        
-                        <form id="goal-form" class="smart-form">
-                            <input type="text" id="goal-name" placeholder="Target Objective" required>
-                            <input type="number" id="goal-target" placeholder="Value (₱)" required>
-                            <div class="input-group">
-                                <input type="date" id="goal-date" required>
-                                <input type="number" id="goal-buffer" placeholder="Safety Buffer (Days)" value="0">
-                            </div>
-                            <button type="submit" class="btn-secondary hover-glow">Initialize Mission</button>
-                        </form>
-                    </section>
-
                     <section class="card animate-in fade-delay-6 hover-lift-slight">
                         <h3><i class="fas fa-bolt"></i> Quantum Entry</h3>
-                        <form id="transaction-form" class="smart-form">
+                        <form id="transaction-form" class="smart-form" style="margin-top: 1rem;">
                             <div class="input-group">
-                                <input type="text" id="desc" placeholder="E.g., Jeepney, Food, Game Credits..." required>
-                                <input type="number" id="amount" placeholder="Amount" required>
+                                <input type="text" id="desc" placeholder="E.g., Jeepney, Food, CODM Credits..." required>
+                                <input type="number" id="amount" placeholder="Amount (₱)" required step="0.01">
                             </div>
                             <div class="input-group">
                                 <select id="type">
@@ -137,11 +113,17 @@
                     </section>
 
                     <section class="card animate-in fade-delay-7 hover-lift-slight">
+                        <h3><i class="fas fa-chart-pie"></i> Spending Analytics</h3>
+                        <div class="analytics-grid" id="category-analytics">
+                            </div>
+                    </section>
+
+                    <section class="card animate-in fade-delay-7 hover-lift-slight">
                         <div class="card-header-flex">
                             <h3><i class="fas fa-database"></i> Activity Ledger</h3>
                             <button id="clear-data" class="text-btn hover-scale">Purge System</button>
                         </div>
-                        <div class="ledger-container">
+                        <div class="ledger-container" style="margin-top: 1rem;">
                             <table id="history-table">
                                 <tbody id="history-body"></tbody>
                             </table>
@@ -172,6 +154,44 @@
                 </div>
                 <button onclick="saveSettings()" class="btn-primary hover-glow" style="margin-top: 1rem;">Sync Configuration</button>
             </div>
+        </div>
+    </div>
+
+    <div id="goal-modal" class="modal-overlay">
+        <div class="modal-card animate-scale-up">
+            <div class="modal-header">
+                <h2>Initialize Mission</h2>
+                <button onclick="toggleGoalModal()" class="close-btn hover-scale">&times;</button>
+            </div>
+            <form id="new-goal-form" class="smart-form">
+                <input type="text" id="goal-name" placeholder="Target Objective (e.g., Roblox Premium)" required>
+                <input type="number" id="goal-target" placeholder="Value (₱)" required step="0.01">
+                <input type="date" id="goal-date" required>
+                <select id="goal-priority" required>
+                    <option value="3">High Priority (Fund First)</option>
+                    <option value="2">Medium Priority</option>
+                    <option value="1">Low Priority</option>
+                </select>
+                <button type="submit" class="btn-primary hover-glow">Deploy Mission</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="edit-modal" class="modal-overlay">
+        <div class="modal-card animate-scale-up">
+            <div class="modal-header">
+                <h2>Edit Ledger Entry</h2>
+                <button onclick="closeEditModal()" class="close-btn hover-scale">&times;</button>
+            </div>
+            <form id="edit-entry-form" class="smart-form">
+                <input type="hidden" id="edit-id">
+                <input type="text" id="edit-desc" placeholder="Description" required>
+                <input type="number" id="edit-amount" placeholder="Amount (Negative for expense)" required step="0.01">
+                <div style="display: flex; gap: 10px; margin-top: 1rem;">
+                    <button type="submit" class="btn-primary hover-glow">Save Changes</button>
+                    <button type="button" class="btn-secondary" onclick="deleteEntry()">Delete Entry</button>
+                </div>
+            </form>
         </div>
     </div>
 
