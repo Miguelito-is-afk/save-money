@@ -1,17 +1,8 @@
-// AETHER CORE - State Management
-// state.js
-
+// STATE MANAGEMENT
 let state = initializeState();
 
 function initializeState() {
-    let saved;
-    try {
-        saved = JSON.parse(localStorage.getItem('aetherCoreDataV5'));
-    } catch (e) {
-        console.error("Corrupted save detected.");
-        saved = null;
-    }
-    
+    let saved = JSON.parse(localStorage.getItem('aetherCoreDataV5'));
     const defaultState = {
         balance: 0,
         history: [],
@@ -21,22 +12,19 @@ function initializeState() {
         graphData: [0],
         settings: { darkMode: true, name: "MIGUEL | PSHS-CRC" }
     };
-
-    if (!saved) return defaultState;
-    return { ...defaultState, ...saved };
+    return saved ? { ...defaultState, ...saved } : defaultState;
 }
 
 function save() {
     localStorage.setItem('aetherCoreDataV5', JSON.stringify(state));
-    updateUI(); // Function from ui.js
+    if (typeof updateUI === "function") updateUI();
 }
 
 function recalculateBalance() {
     state.balance = state.history.reduce((sum, item) => sum + item.amount, 0);
     state.graphData = [0];
     let running = 0;
-    const chrono = [...state.history].reverse();
-    chrono.forEach(t => { 
+    [...state.history].reverse().forEach(t => { 
         running += t.amount; 
         state.graphData.push(running); 
     });
@@ -44,9 +32,9 @@ function recalculateBalance() {
 
 function detectCategory(desc) {
     const d = desc.toLowerCase();
-    if (d.includes('food') || d.includes('lunch')) return '🍔';
+    if (d.includes('food')) return '🍔';
     if (d.includes('fare') || d.includes('jeep')) return '🚙';
-    if (d.includes('game') || d.includes('roblox')) return '🎮';
-    if (d.includes('school') || d.includes('print')) return '📚';
+    if (d.includes('game')) return '🎮';
+    if (d.includes('school')) return '📚';
     return '💳'; 
 }
