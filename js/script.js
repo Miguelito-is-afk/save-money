@@ -167,67 +167,69 @@ function updateUI() {
 }
 
 function calculateAetherLogic() {
-    const healthEl = document.getElementById('health-score');
+    const container = document.getElementById('goals-list-container');
     const adviceEl = document.getElementById('smart-advice');
-    const actionZone = document.getElementById('action-zone');
-    actionZone.innerHTML = ""; 
-
-    if (state.goal.target > 0) {
-        document.getElementById('goal-name-display').innerText = state.goal.name;
-        const progress = Math.min((state.balance / state.goal.target) * 100, 100);
-        document.getElementById('goal-progress-bar').style.width = `${progress}%`;
-        document.getElementById('progress-percent').innerText = `${Math.round(progress)}%`;
-
-        const targetDate = new Date(state.goal.date);
-        targetDate.setDate(targetDate.getDate() - state.goal.buffer);
-        const daysLeft = Math.ceil((targetDate - new Date()) / (1000 * 60 * 60 * 24));
-        const remaining = state.goal.target - state.balance;
-
-        document.getElementById('goal-stats').innerText = remaining > 0 ? `₱${remaining.toLocaleString()} remaining` : "Quota Met";
-
-        if (remaining <= 0) {
-            healthEl.innerText = "MAX RESONANCE";
-            healthEl.style.color = "var(--success)";
-            adviceEl.innerText = `Objective achieved. Target [${state.goal.name}] is ready for acquisition.`;
-            actionZone.innerHTML = `<button onclick="redeemGoal()" class="claim-btn">REDEEM ASSET</button>`;
-        } else if (daysLeft > 0) {
-            const daily = remaining / daysLeft;
-            adviceEl.innerText = `Save ₱${daily.toFixed(2)} daily to secure objective ${state.goal.buffer} days early.`;
-            healthEl.innerText = (daily > state.income/7) ? "UNSTABLE" : "STABLE";
-            healthEl.style.color = (daily > state.income/7) ? "var(--warning)" : "var(--primary)";
-            generatePredictions(daily);
-        } else {
-            adviceEl.innerText = "Temporal deadline breached. Re-calibrate mission parameters.";
-            healthEl.innerText = "CRITICAL";
-            healthEl.style.color = "var(--danger)";
-        }
-    } else {
-        document.getElementById('goal-progress-bar').style.width = `0%`;
-        adviceEl.innerText = "Awaiting input. Initialize a target mission to begin synchronization.";
-        healthEl.innerText = "STANDBY";
-        healthEl.style.color = "var(--text-muted)";
-    }
-}
-
-function generatePredictions(dailyTarget) {
-    const predBody = document.getElementById('prediction-body');
-    let rows = "";
-    let tempBalance = state.balance;
-    const avgDailyIncome = state.income / 7;
     
-    for (let i = 1; i <= 7; i++) {
-        let date = new Date();
-        date.setDate(date.getDate() + i);
-        tempBalance += (avgDailyIncome * 0.8); // Assuming 20% burn rate buffer
-        rows += `
-            <tr class="table-row-hover hover-lift-slight">
-                <td>${date.toLocaleDateString('en-US', {weekday: 'short', month: 'short', day: 'numeric'})}</td>
-                <td>₱${tempBalance.toFixed(2)}</td>
-                <td style="color: var(--success); font-weight: bold;">₱${dailyTarget.toFixed(2)}</td>
-            </tr>`;
+    if (state.goals.length === 0) {
+        container.innerHTML = `<p style="text-align:center; padding:1rem; opacity:0.5;">No active missions. System standby.</p>`;
+        return;
     }
-    predBody.innerHTML = rows;
+
+    let totalDailyRequired = 0;
+
+    container.innerHTML = state.goals.map((goal, index) => {
+        const daysLeft = Math.max(1, Math.ceil((new Date(goal.date) - new Date()) / 86400000));
+        const progress = Math.min(100, (state.balance / goal.target) * 100).toFixed(1);
+        const daily = (goal.target / daysLeft);
+        totalDailyRequired += daily;
+
+        return `
+            <div class="multi-goal-item" style="margin-bottom: 1.5rem; border-left: 3px solid var(--primary); padding-left: 1rem;">
+                <div class="flex-between">
+                    <strong>${goal.name}</strong>
+                    <button onclick="deleteGoal(${index})" class="icon-btn" style="color:var(--danger)"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="progress-container" style="height: 8px; margin: 8px 0;">
+                    <div class="progress-bar" style="width: ${progress}%"></div>
+                </div>
+                <div class="flex-between" style="font-size: 0.7rem; font-weight: 700;">
+                    <span>${progress}% SYNCED</span>
+                    <span>₱${daily.toFixed(2)} / DAY</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    // Update the Quantum Advisory
+    const weeklyBudget = state.income;
+    const dailyIncome = weeklyBudget / 7;
+    
+    if (totalDailyRequired > dailyIncome) {
+        adviceEl.innerHTML = `<span style="color:var(--danger)">DEFICIT DETECTED:</span> Missions require ₱${totalDailyRequired.toFixed(2)}/day. Your fuel is only ₱${dailyIncome.toFixed(2)}/day. Extend your deadlines!`;
+    } else {
+        adviceEl.innerHTML = `ALLOCATION STABLE: Total mission cost is ₱${totalDailyRequired.toFixed(2)}/day. You have ₱${(dailyIncome - totalDailyRequired).toFixed(2)} surplus daily.`;
+    }
 }
+
+// Add function to delete goals
+function deleteGoal(index) {
+    state.goals.splice(index, 1);
+    save();
+}
+
+// Update the Goal Form Listener
+document.getElementById('goal-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const newGoal = {
+        name: document.getElementById('goal-name').value,
+        target: parseFloat(document.getElementById('goal-target').value),
+        date: document.getElementById('goal-date').value
+    };
+    state.goals.push(newGoal);
+    save();
+    e.target.reset();
+});
+
 
 function renderLedger() {
     const body = document.getElementById('history-body');
