@@ -1,4 +1,5 @@
 // UI RENDERING & CHARTS
+// ui.js
 let chartInstance = null;
 
 function applySettings() {
