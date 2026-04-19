@@ -4,6 +4,11 @@
    Optimized for: Lenovo Idea Tab Pro (Dimensity 8400)
 */
 
+html {
+    scroll-behavior: smooth;
+}
+
+
 :root {
     /* Neural Palette */
     --primary: #6366f1;
@@ -142,6 +147,8 @@ body {
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     z-index: 100;
+    border-right: 1px solid var(--primary-glow); 
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.02);
 }
 
 .main-content { 
@@ -149,6 +156,64 @@ body {
     padding: 3rem; 
     max-width: 1600px; 
     margin: 0 auto; 
+}
+
+/* --- QUANTUM BACKGROUND ENGINE --- */
+.quantum-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    overflow: hidden;
+    background: var(--bg-main);
+    transition: background-color var(--transition-smooth);
+}
+
+.orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.15;
+    will-change: transform;
+    pointer-events: none;
+}
+
+/* Orb 1: Primary Glow */
+.orb-1 {
+    width: 400px;
+    height: 400px;
+    background: var(--primary);
+    top: -100px;
+    right: -100px;
+    animation: orbit 20s infinite linear;
+}
+
+/* Orb 2: Accent Glow */
+.orb-2 {
+    width: 300px;
+    height: 300px;
+    background: var(--accent);
+    bottom: -50px;
+    left: -50px;
+    animation: orbit 25s infinite linear reverse;
+}
+
+/* Orb 3: Subtle Center Drift */
+.orb-3 {
+    width: 250px;
+    height: 250px;
+    background: var(--success);
+    top: 40%;
+    left: 30%;
+    opacity: 0.05;
+    animation: drift 15s infinite ease-in-out;
+}
+
+/* Dark Mode adjustment for orbs */
+body.dark-mode .orb {
+    opacity: 0.25;
 }
 
 /* --- BRANDING & NAVIGATION --- */
@@ -606,4 +671,44 @@ input:checked + .slider:before {
     .main-content { padding: 1.5rem; }
     .advisory-card { flex-direction: column; text-align: center; gap: 1rem; }
     .claim-btn { margin: 0 auto; }
+}
+
+/* --- OPTIMIZED ANIMATION VECTORS --- */
+@keyframes orbit {
+    0% { transform: translate3d(0, 0, 0) rotate(0deg); }
+    100% { transform: translate3d(100px, 50px, 0) rotate(360deg); }
+}
+
+@keyframes drift {
+    0%, 100% { transform: translate3d(0, 0, 0); }
+    50% { transform: translate3d(-30px, 60px, 0); }
+}
+
+/* --- MESH GRADIENT FOR CARDS --- */
+.card, .stat-card {
+    position: relative;
+    overflow: hidden;
+}
+
+/* Adds a subtle "Shimmer" effect when hovering over cards */
+.card::after, .stat-card::after {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+        45deg,
+        transparent,
+        rgba(255, 255, 255, 0.03),
+        transparent
+    );
+    transform: rotate(45deg);
+    transition: 0.6s;
+    pointer-events: none;
+}
+
+.card:hover::after, .stat-card:hover::after {
+    transform: rotate(45deg) translate(20%, 20%);
 }
