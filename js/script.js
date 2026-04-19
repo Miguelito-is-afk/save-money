@@ -1,8 +1,9 @@
-// AETHER CORE v3.0 - Quantum Neural Engine
+// AETHER CORE v4.0 - Quantum Neural Engine (Surplus & Anomaly Edition)
 // Hardware-Optimized for Dimensity processing
 
 let state = JSON.parse(localStorage.getItem('aetherCoreData')) || {
     balance: 0,
+    generalSavings: 0, // NEW: Track money outside of specific goals
     history: [],
     goal: { name: "VOID", target: 0, date: null, buffer: 0 },
     income: 800,
@@ -20,25 +21,33 @@ document.addEventListener('DOMContentLoaded', () => {
     updateUI();
 });
 
-// AI CATEGORIZATION ENGINE
-// UPGRADED AI CATEGORIZATION ENGINE
-function detectCategory(desc) {
+// V4 CATEGORIZATION & ANOMALY ENGINE
+function detectCategoryAndAnomaly(desc, amount) {
     const d = desc.toLowerCase();
+    let category = { icon: '💳', type: 'anomaly', name: 'Misc' }; // Default
     
-    // Word boundary regex ensures "scooter" doesn't trigger "school"
+    // Expanded Lexicon with "Needs" vs "Wants" tagging
     const categories = {
-        '🍔': /\b(food|lunch|snack|burger|pizza|eat|meal|coffee|drink|water)\b/,
-        '🚙': /\b(fare|jeep|transpo|trike|gas|taxi|grab|bus|commute|ride)\b/,
-        '🎮': /\b(codm|roblox|game|cp|steam|play|skin|valorant|topup)\b/,
-        '📚': /\b(school|print|project|book|tuition|supplies|pen|paper)\b/,
-        '👕': /\b(clothes|shirt|shoes|apparel|fit|pants|mall|thrifting)\b/,
-        '🎬': /\b(movie|cinema|netflix|ticket|concert|sub)\b/
+        '🍔': { regex: /\b(food|lunch|snack|burger|pizza|eat|meal|coffee|drink|water|grocery|groceries|mcdo|jollibee)\b/, type: 'need' },
+        '🚙': { regex: /\b(fare|jeep|transpo|trike|gas|taxi|grab|bus|commute|ride|angkas|joyride)\b/, type: 'need' },
+        '🎮': { regex: /\b(codm|roblox|game|cp|steam|play|skin|valorant|topup|rp|vbucks)\b/, type: 'want' },
+        '📚': { regex: /\b(school|print|project|book|tuition|supplies|pen|paper|copy|xerox)\b/, type: 'need' },
+        '👕': { regex: /\b(clothes|shirt|shoes|apparel|fit|pants|mall|thrifting|ukay|jacket)\b/, type: 'want' },
+        '🎬': { regex: /\b(movie|cinema|netflix|ticket|concert|sub|spotify|premium)\b/, type: 'want' }
     };
 
-    for (let [icon, regex] of Object.entries(categories)) {
-        if (regex.test(d)) return icon;
+    for (let [icon, data] of Object.entries(categories)) {
+        if (data.regex.test(d)) {
+            category = { icon: icon, type: data.type, name: d };
+            break;
+        }
     }
-    return '💳'; // Default Anomaly
+
+    // Smart Anomaly Detection: If a single expense is more than 50% of weekly income, flag it.
+    const isAnomaly = Math.abs(amount) > (state.income * 0.50);
+    if (isAnomaly) category.icon = '⚠️'; // Overrides icon for high-drain warnings
+
+    return category;
 }
 
 // UI LOGIC
@@ -85,7 +94,8 @@ function redeemGoal() {
         date: new Date().toLocaleDateString(),
         desc: `🏆 SECURED: ${state.goal.name}`,
         amount: -cost,
-        icon: '🎯'
+        icon: '🎯',
+        spendType: 'goal'
     });
 
     state.goal = { name: "VOID", target: 0, date: null, buffer: 0 };
@@ -95,19 +105,24 @@ function redeemGoal() {
     alert("System Overload: Mission Accomplished. Asset acquired.");
 }
 
-// TRANSACTION ENTRY
+// TRANSACTION ENTRY - UPGRADED
 document.getElementById('transaction-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const amount = parseFloat(document.getElementById('amount').value);
     const type = document.getElementById('type').value;
     const desc = document.getElementById('desc').value;
 
+    const analysis = type === 'income' 
+        ? { icon: '💰', type: 'income' } 
+        : detectCategoryAndAnomaly(desc, amount);
+
     state.history.unshift({
         id: Date.now(),
         date: new Date().toLocaleDateString(),
         desc: desc,
         amount: type === 'income' ? amount : -amount,
-        icon: type === 'income' ? '💰' : detectCategory(desc)
+        icon: analysis.icon,
+        spendType: analysis.type
     });
 
     state.balance += (type === 'income' ? amount : -amount);
@@ -145,7 +160,6 @@ function save() {
 
 // UPGRADED BURN RATE ANALYTICS
 function calculateBurnRate() {
-    // Filter last 30 days of expenses
     const now = Date.now();
     const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
     const recentExpenses = state.history.filter(t => t.amount < 0 && t.id > thirtyDaysAgo);
@@ -153,12 +167,9 @@ function calculateBurnRate() {
     
     if (recentExpenses.length > 1) {
         const totalBurn = recentExpenses.reduce((sum, t) => sum + Math.abs(t.amount), 0);
-        
-        // Calculate the exact time span of these expenses
         const oldestExpense = Math.min(...recentExpenses.map(t => t.id));
         const daysSpan = Math.max(1, (now - oldestExpense) / (1000 * 60 * 60 * 24));
         
-        // Global state injection for the Prediction Engine to use
         state.trueDailyBurn = totalBurn / daysSpan; 
 
         burnText.innerHTML = `<i class="fas fa-fire"></i> True Burn: ₱${state.trueDailyBurn.toFixed(2)} / day`;
@@ -170,40 +181,41 @@ function calculateBurnRate() {
     }
 }
 
-
 function updateUI() {
-    // Text Data
     document.getElementById('total-balance').innerText = `₱${state.balance.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
     document.getElementById('weekly-inc').innerText = `₱${state.income.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
     document.getElementById('buffer-display').innerText = `${state.goal.buffer} Days`;
     document.getElementById('streak-count').innerText = `🔥 ${state.streak} Day Pulse`;
     
-    // Aura Gamification (Level up every 500 saved)
     const level = Math.max(1, Math.floor(state.balance / 500) + 1);
     document.getElementById('aura-level').innerText = `LVL ${level}`;
 
     renderLedger();
+    calculateBurnRate(); // Ensure burn rate runs before logic
     calculateAetherLogic();
-    calculateBurnRate();
     if (chartInstance) updateChart();
 }
 
-// UPGRADED SYSTEM CORE LOGIC
+// V4 SYSTEM CORE LOGIC - SURPLUS ROUTING
 function calculateAetherLogic() {
     const healthEl = document.getElementById('health-score');
     const adviceEl = document.getElementById('smart-advice');
     const actionZone = document.getElementById('action-zone');
     actionZone.innerHTML = ""; 
 
+    const dailyIncome = state.income / 7;
+    const projectedBurn = (state.trueDailyBurn && state.trueDailyBurn > 0) ? state.trueDailyBurn : (dailyIncome * 0.2);
+    const disposableIncome = dailyIncome - projectedBurn; 
+
     if (state.goal.target > 0) {
         document.getElementById('goal-name-display').innerText = state.goal.name;
         const progress = Math.min((state.balance / state.goal.target) * 100, 100);
         document.getElementById('goal-progress-bar').style.width = `${progress}%`;
         document.getElementById('progress-percent').innerText = `${Math.round(progress)}%`;
-
+        
         const targetDate = new Date(state.goal.date);
         targetDate.setDate(targetDate.getDate() - state.goal.buffer);
-        const daysLeft = Math.ceil((targetDate - new Date()) / (1000 * 60 * 60 * 24));
+        const daysLeft = Math.max(1, Math.ceil((targetDate - new Date()) / (1000 * 60 * 60 * 24)));
         const remaining = state.goal.target - state.balance;
 
         document.getElementById('goal-stats').innerText = remaining > 0 ? `₱${remaining.toLocaleString()} remaining` : "Quota Met";
@@ -213,50 +225,72 @@ function calculateAetherLogic() {
             healthEl.style.color = "var(--success)";
             adviceEl.innerText = `Objective achieved. Target [${state.goal.name}] is ready for acquisition.`;
             actionZone.innerHTML = `<button onclick="redeemGoal()" class="claim-btn">REDEEM ASSET</button>`;
-        } else if (daysLeft > 0) {
-            const dailyReq = remaining / daysLeft;
-            const dailyIncome = state.income / 7;
-            const safeToSpend = Math.max(0, dailyIncome - dailyReq); // New Metric!
-
-            adviceEl.innerHTML = `Save <strong>₱${dailyReq.toFixed(2)}</strong> daily.<br>Safe to spend limit: <strong>₱${safeToSpend.toFixed(2)}/day</strong>.`;
-            
-            healthEl.innerText = (dailyReq > dailyIncome) ? "UNSTABLE" : "STABLE";
-            healthEl.style.color = (dailyReq > dailyIncome) ? "var(--warning)" : "var(--primary)";
-            
-            generatePredictions(dailyReq);
         } else {
-            adviceEl.innerText = "Temporal deadline breached. Re-calibrate mission parameters.";
-            healthEl.innerText = "CRITICAL";
-            healthEl.style.color = "var(--danger)";
+            const dailyReq = remaining / daysLeft;
+            const surplus = disposableIncome - dailyReq; 
+
+            if (dailyReq > dailyIncome) {
+                healthEl.innerText = "CRITICAL DEFICIT";
+                healthEl.style.color = "var(--danger)";
+                adviceEl.innerHTML = `Goal requires <strong>₱${dailyReq.toFixed(2)}/day</strong>, but you only make <strong>₱${dailyIncome.toFixed(2)}</strong>. Increase income or extend deadline.`;
+            } else if (surplus < 0) {
+                healthEl.innerText = "UNSTABLE";
+                healthEl.style.color = "var(--warning)";
+                adviceEl.innerHTML = `Goal requires <strong>₱${dailyReq.toFixed(2)}/day</strong>. You are short ₱${Math.abs(surplus).toFixed(2)} daily. Cut back on your ₱${projectedBurn.toFixed(2)} daily burn!`;
+            } else {
+                healthEl.innerText = "OPTIMAL";
+                healthEl.style.color = "var(--primary)";
+                adviceEl.innerHTML = `
+                    🎯 Goal Drain: <strong>₱${dailyReq.toFixed(2)}/day</strong><br>
+                    🔥 Living Burn: <strong>₱${projectedBurn.toFixed(2)}/day</strong><br>
+                    🏦 <strong>General Savings Potential: ₱${surplus.toFixed(2)}/day</strong>
+                    <br><span style="font-size:0.85em; color:var(--text-muted);">You can stash ₱${(surplus*7).toFixed(2)} extra a week!</span>
+                `;
+            }
+            generatePredictions(dailyReq, surplus, projectedBurn);
         }
     } else {
         document.getElementById('goal-progress-bar').style.width = `0%`;
-        adviceEl.innerText = "Awaiting input. Initialize a target mission to begin synchronization.";
-        healthEl.innerText = "STANDBY";
-        healthEl.style.color = "var(--text-muted)";
+        document.getElementById('progress-percent').innerText = `0%`;
+        document.getElementById('goal-stats').innerText = `Awaiting Data`;
+
+        const totalSurplus = disposableIncome;
+        healthEl.innerText = "ACCUMULATING";
+        healthEl.style.color = "var(--success)";
+        adviceEl.innerHTML = `No active goal. Wealth-Building Mode.<br>
+        Based on your burn rate, you can save <strong>₱${totalSurplus.toFixed(2)}/day</strong> directly into general savings.`;
+        generatePredictions(0, totalSurplus, projectedBurn);
     }
 }
 
-// UPGRADED PREDICTIVE ENGINE
-function generatePredictions(dailyTarget) {
+// V4 PREDICTIVE ENGINE - THREE VECTOR ANALYSIS
+function generatePredictions(dailyTarget, dailySurplus, projectedBurn) {
     const predBody = document.getElementById('prediction-body');
+    
+    // Dynamically update HTML Table Headers to match the new smart output
+    const tableHead = document.querySelector('.prediction-table thead tr');
+    if (tableHead) {
+        tableHead.innerHTML = `<th>Timeline</th><th>Liquid Balance</th><th>Projected Savings</th>`;
+    }
+
     let rows = "";
     let tempBalance = state.balance;
-    const dailyIncome = state.income / 7;
+    let tempSavings = state.generalSavings || 0; 
     
-    // Fallback to 20% burn buffer only if there's no historical data yet
-    const projectedBurn = (state.trueDailyBurn && state.trueDailyBurn > 0) 
-        ? state.trueDailyBurn 
-        : (dailyIncome * 0.2);
-
-    const netDailyVelocity = dailyIncome - projectedBurn;
+    const actualDailySavings = dailySurplus > 0 ? dailySurplus : 0;
+    const dailyIncome = state.income / 7;
     
     for (let i = 1; i <= 7; i++) {
         let date = new Date();
         date.setDate(date.getDate() + i);
         
-        // Predict based on ACTUAL spending habits
-        tempBalance += netDailyVelocity; 
+        tempBalance += dailyIncome;         
+        tempBalance -= projectedBurn;       
+        
+        if (actualDailySavings > 0) {
+            tempSavings += actualDailySavings;
+            tempBalance -= actualDailySavings; 
+        }
         
         const balanceColor = tempBalance < 0 ? "var(--danger)" : "var(--text-main)";
 
@@ -264,12 +298,12 @@ function generatePredictions(dailyTarget) {
             <tr class="table-row-hover hover-lift-slight">
                 <td>${date.toLocaleDateString('en-US', {weekday: 'short', month: 'short', day: 'numeric'})}</td>
                 <td style="color: ${balanceColor};">₱${tempBalance.toFixed(2)}</td>
-                <td style="color: var(--success); font-weight: bold;">₱${dailyTarget.toFixed(2)}</td>
+                <td style="color: var(--primary); font-weight: bold;">₱${tempSavings.toFixed(2)}</td>
             </tr>`;
     }
+    
     predBody.innerHTML = rows;
 }
-
 
 function renderLedger() {
     const body = document.getElementById('history-body');
@@ -288,13 +322,12 @@ function renderLedger() {
 function updateChart() {
     chartInstance.data.labels = state.history.slice(0, 15).reverse().map(i => i.date) || ['Sync'];
     chartInstance.data.datasets[0].data = state.graphData.slice(-15);
-    chartInstance.update('active'); // smoother update animation
+    chartInstance.update('active'); 
 }
 
 function initChart() {
     const ctx = document.getElementById('balanceChart').getContext('2d');
     
-    // Hardware accelerated gradient
     const gradient = ctx.createLinearGradient(0, 0, 0, 400);
     gradient.addColorStop(0, 'rgba(99, 102, 241, 0.4)');
     gradient.addColorStop(1, 'rgba(99, 102, 241, 0.0)');
@@ -308,7 +341,7 @@ function initChart() {
                 data: state.graphData,
                 borderColor: '#6366f1',
                 borderWidth: 3,
-                tension: 0.4, // Smooth curves
+                tension: 0.4, 
                 fill: true,
                 backgroundColor: gradient,
                 pointBackgroundColor: '#a855f7',
