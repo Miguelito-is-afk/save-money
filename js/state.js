@@ -1,4 +1,5 @@
 // STATE MANAGEMENT
+// state.js
 let state = initializeState();
 
 function initializeState() {
