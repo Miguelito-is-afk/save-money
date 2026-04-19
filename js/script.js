@@ -10,6 +10,7 @@ let state = JSON.parse(localStorage.getItem('aetherCoreData')) || {
     incomeSchedule: [1, 2, 3, 4],
     streak: 0,
     graphData: [0],
+    lastFuelDate: null, // NEW: Track the last time you confirmed fuel
     settings: { darkMode: false, name: "MIGUEL | PSHS-CRC" }
 };
 
@@ -36,6 +37,54 @@ document.querySelectorAll('.day-btn').forEach(btn => {
         save();
     });
 });
+
+function checkFuelPanel() {
+    const fuelPanel = document.getElementById('fuel-panel');
+    const today = new Date().getDay();
+    const todayDateString = new Date().toLocaleDateString();
+    
+    const isPayday = state.incomeSchedule.includes(today);
+    const alreadyConfirmed = state.lastFuelDate === todayDateString;
+
+    if (isPayday && !alreadyConfirmed) {
+        const numPaydays = state.incomeSchedule.length || 1;
+        const amount = state.income / numPaydays;
+        
+        document.getElementById('fuel-message').innerText = `Neural link confirms today is a Payday. Confirming receipt of ₱${amount.toFixed(2)}?`;
+        fuelPanel.style.display = 'block';
+    } else {
+        fuelPanel.style.display = 'none';
+    }
+}
+
+function confirmFuel(received) {
+    const todayDateString = new Date().toLocaleDateString();
+    const numPaydays = state.incomeSchedule.length || 1;
+    const amount = state.income / numPaydays;
+
+    if (received) {
+        // Log it as income
+        state.balance += amount;
+        state.history.unshift({
+            id: Date.now(),
+            date: todayDateString,
+            desc: "⛽ DAILY FUEL SYNC",
+            amount: amount,
+            icon: '💰',
+            spendType: 'income'
+        });
+        state.graphData.push(state.balance);
+        state.streak++;
+        alert(`System Energized. ₱${amount.toFixed(2)} added to Liquid Assets.`);
+    } else {
+        // Penalty or Note
+        alert("Warning: Fuel Deficit Detected. Adjusting tactical advisory for zero-income scenario.");
+        // Optional: You could add a 'Missing' note to history
+    }
+
+    state.lastFuelDate = todayDateString;
+    save(); // This handles updateUI and hiding the panel
+}
 
 // V4 CATEGORIZATION & ANOMALY ENGINE
 function detectCategoryAndAnomaly(desc, amount) {
@@ -223,6 +272,7 @@ function updateUI() {
     document.getElementById('aura-level').innerText = `LVL ${level}`;
 
     renderLedger();
+    checkFuelPanel();
     calculateBurnRate(); // Ensure burn rate runs before logic
     calculateAetherLogic();
     if (chartInstance) updateChart();
