@@ -8,6 +8,9 @@ function initializeState() {
         goals: [], 
         income: 1000,
         streak: 0,
+        xp: 0,
+        level: 1,
+        savingsPercent: 20, // Strategic Reserve %
         graphData: [0],
         settings: { darkMode: true, name: "MIGUEL | PSHS-CRC" }
     };
@@ -21,9 +24,13 @@ function save() {
 
 function recalculateBalance() {
     state.balance = state.history.reduce((sum, item) => sum + item.amount, 0);
+    
+    // Leveling Logic: 50 XP per transaction
+    state.xp = state.history.length * 50;
+    state.level = Math.floor(state.xp / 500) + 1;
+
     state.graphData = [0];
     let running = 0;
-    // Rebuild graph data correctly
     [...state.history].reverse().forEach(t => { 
         running += t.amount; 
         state.graphData.push(running); 
@@ -32,9 +39,9 @@ function recalculateBalance() {
 
 function detectCategory(desc) {
     const d = desc.toLowerCase();
-    if (d.includes('food')) return '🍔';
-    if (d.includes('fare') || d.includes('jeep')) return '🚙';
-    if (d.includes('game') || d.includes('roblox') || d.includes('codm')) return '🎮';
-    if (d.includes('school') || d.includes('project')) return '📚';
+    if (d.includes('food') || d.includes('eat')) return '🍔';
+    if (d.includes('fare') || d.includes('jeep') || d.includes('grab')) return '🚙';
+    if (d.includes('game') || d.includes('roblox') || d.includes('codm') || d.includes('load')) return '🎮';
+    if (d.includes('school') || d.includes('project') || d.includes('print')) return '📚';
     return '💳'; 
 }
