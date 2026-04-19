@@ -55,7 +55,7 @@
                 <div class="stat-card animate-in fade-delay-2 hover-lift">
                     <div class="card-header-flex">
                         <span class="label">Liquid Assets</span>
-                        <button onclick="editStat('balance')" class="icon-btn" title="Edit Balance"><i class="fas fa-pen"></i></button>
+                        <button onclick="editStat('balance')" class="icon-btn"><i class="fas fa-pen"></i></button>
                     </div>
                     <h2 id="total-balance" class="counter-up">₱0.00</h2>
                     <div class="stat-meta" id="streak-count">🔥 0 Day Pulse</div>
@@ -63,7 +63,7 @@
                 <div class="stat-card animate-in fade-delay-3 hover-lift">
                     <div class="card-header-flex">
                         <span class="label">Weekly Fuel</span>
-                        <button onclick="editStat('income')" class="icon-btn" title="Edit Income"><i class="fas fa-pen"></i></button>
+                        <button onclick="editStat('income')" class="icon-btn"><i class="fas fa-pen"></i></button>
                     </div>
                     <h2 id="weekly-inc">₱0.00</h2>
                     <div class="stat-meta">Income Stream</div>
@@ -88,11 +88,7 @@
                         <h3><i class="fas fa-satellite-dish"></i> 7-Day Wealth Projection</h3>
                         <table class="prediction-table">
                             <thead>
-                                <tr>
-                                    <th>Sequence</th>
-                                    <th>Projected Balance</th>
-                                    <th>Required Goal</th>
-                                </tr>
+                                <tr><th>Sequence</th><th>Projected Balance</th><th>Required Goal</th></tr>
                             </thead>
                             <tbody id="prediction-body"></tbody>
                         </table>
@@ -102,31 +98,24 @@
                 <div class="flex-column">
                     <section class="card goal-card animate-in fade-delay-5 hover-lift-slight">
                         <h3><i class="fas fa-crosshairs"></i> CURRENT MISSION: <span id="goal-name-display">VOID</span></h3>
-                        
-                        <select id="goal-selector" class="input-styled" style="margin-bottom: 1rem;" onchange="switchGoal(this.value)">
-                            </select>
-                        
                         <div class="progress-wrapper">
                             <div class="progress-container">
                                 <div id="goal-progress-bar" class="progress-bar aura-bg"></div>
                             </div>
                             <div class="progress-labels">
-                                <span id="progress-percent" style="font-weight: 700;">0%</span>
-                                <span id="goal-stats" style="font-weight: 700;">₱0.00 remaining</span>
+                                <span id="progress-percent">0%</span>
+                                <span id="goal-stats">₱0.00 remaining</span>
                             </div>
                         </div>
                         
-                        <hr style="margin: 1.5rem 0; opacity: 0.1;">
-                        
                         <form id="goal-form" class="smart-form">
-                            <p style="font-size: 0.8rem; font-weight: 800; margin-bottom: 0.5rem; color: var(--primary);">INITIALIZE NEW MISSION</p>
                             <input type="text" id="goal-name" placeholder="Target Objective" required>
                             <input type="number" id="goal-target" placeholder="Value (₱)" required>
                             <div class="input-group">
                                 <input type="date" id="goal-date" required>
                                 <input type="number" id="goal-buffer" placeholder="Safety Buffer (Days)" value="0">
                             </div>
-                            <button type="submit" class="btn-secondary hover-glow" style="width: 100%; margin-top: 0.5rem;">DEPLOY MISSION</button>
+                            <button type="submit" class="btn-secondary hover-glow">Initialize Mission</button>
                         </form>
                     </section>
 
