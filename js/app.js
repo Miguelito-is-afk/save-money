@@ -1,4 +1,5 @@
 // EVENT LISTENERS & ACTIONS
+// app.js
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('current-date').innerText = new Date().toDateString();
     applySettings();
