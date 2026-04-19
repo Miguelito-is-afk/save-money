@@ -27,49 +27,77 @@ function renderGoalsAndAether() {
     const container = document.getElementById('goals-container');
     const adviceEl = document.getElementById('smart-advice');
     
-    // Strategic Reserve calculation (20% of fuel)
-    const reserveAmount = state.income * (state.savingsPercent / 100);
-
     if (state.goals.length === 0) {
-        container.innerHTML = "<p class='text-muted' style='text-align:center;'>No active missions.</p>";
-        adviceEl.innerText = `System optimal. Recommendation: Allocate ₱${reserveAmount.toFixed(2)} to your Strategic Reserve this week.`;
+        container.innerHTML = `
+            <div style="text-align:center; padding: 2rem; color: var(--text-muted);">
+                <i class="fas fa-ghost" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                <p>No active missions. All systems nominal.</p>
+            </div>`;
+        adviceEl.innerHTML = "<strong>NEURAL ADVISORY:</strong> No financial targets detected. Recommend setting a 'Strategic Reserve' goal to build wealth.";
         return;
     }
 
     let totalDailyNeeded = 0;
-    let html = state.goals.map(goal => {
-        let daysLeft = Math.max(1, Math.ceil((new Date(goal.date) - new Date()) / 86400000));
+    let totalLockedCapital = 0;
+
+    const goalHtml = state.goals.map((goal, index) => {
+        const deadline = new Date(goal.date);
+        const today = new Date();
+        const daysRemaining = Math.max(1, Math.ceil((deadline - today) / (1000 * 60 * 60 * 24)));
         
-        // Progress Bar Math: How much of the current balance "covers" this goal?
-        // (Simplified: We show progress based on current balance vs target)
-        let progress = Math.min(100, (state.balance / goal.target) * 100).toFixed(1);
-        let remaining = Math.max(0, goal.target - state.balance); 
-        let dailyNeeded = remaining / daysLeft;
-        totalDailyNeeded += dailyNeeded;
+        // Logical Allocation: How much should be "put away" by now?
+        // If the goal is 10 days away and costs ₱100, you should have ₱10/day.
+        const dailyReq = goal.target / ((deadline - new Date(goal.createdAt || today)) / 86400000 || daysRemaining);
+        const shouldHaveSaved = Math.min(goal.target, dailyReq * Math.max(1, (today - new Date(goal.createdAt || today)) / 86400000));
+        
+        totalDailyNeeded += (goal.target / daysRemaining);
+        totalLockedCapital += goal.target;
+
+        // Calculate visual progress based on total balance vs target
+        const progressPercent = Math.min(100, (state.balance / goal.target) * 100).toFixed(1);
 
         return `
-            <div class="goal-item animate-in">
-                <div class="flex-between">
-                    <strong>${goal.name}</strong>
-                    <span>₱${goal.target.toLocaleString()}</span>
+            <div class="goal-card animate-in" style="animation-delay: ${index * 0.1}s">
+                <div class="goal-header">
+                    <div>
+                        <div class="goal-name">${goal.name}</div>
+                        <div class="goal-days">${daysRemaining} Days Remaining</div>
+                    </div>
+                    <div class="allocation-badge">₱${goal.target.toLocaleString()}</div>
                 </div>
-                <div class="progress-container">
-                    <div class="progress-fill" style="width: ${progress}%"></div>
+                
+                <div class="neural-progress-container">
+                    <div class="neural-progress-fill" style="width: ${progressPercent}%"></div>
                 </div>
-                <div class="flex-between" style="font-size: 0.75rem; color: var(--text-muted);">
-                    <span>${progress}% Synced</span>
-                    <span>₱${dailyNeeded.toFixed(2)}/day needed</span>
+
+                <div class="goal-footer">
+                    <span style="color: var(--text-muted)">
+                        <i class="fas fa-sync"></i> ${progressPercent}% Synced
+                    </span>
+                    <span style="color: var(--primary); font-weight: 800;">
+                        ₱${(goal.target / daysRemaining).toFixed(2)}/day
+                    </span>
                 </div>
-            </div>`;
+            </div>
+        `;
     }).join('');
 
-    container.innerHTML = html;
-    
-    // Smarter Advisory
-    if (state.balance < totalDailyNeeded * 7) {
-        adviceEl.innerText = `Tactical Alert: Current assets low. To hit all missions, you must save ₱${totalDailyNeeded.toFixed(2)} daily. Minimize "Burn" in non-essential sectors.`;
+    container.innerHTML = goalHtml;
+
+    // --- QUANTUM ADVISORY LOGIC ---
+    const dailyIncome = state.income / 7; // Weekly income to daily
+    const surplus = dailyIncome - totalDailyNeeded;
+
+    if (surplus < 0) {
+        adviceEl.innerHTML = `
+            <strong style="color: #ff4444;"><i class="fas fa-exclamation-triangle"></i> DEFICIT DETECTED:</strong><br>
+            Your missions require ₱${totalDailyNeeded.toFixed(2)}/day, but your income is only ₱${dailyIncome.toFixed(2)}/day. 
+            <strong>Action:</strong> Extend deadlines or increase 'Weekly Fuel'.`;
     } else {
-        adviceEl.innerText = `Condition: Green. Your asset growth vector is healthy. Daily mission allocation: ₱${totalDailyNeeded.toFixed(2)}.`;
+        adviceEl.innerHTML = `
+            <strong style="color: var(--success);"><i class="fas fa-check-circle"></i> SYSTEM STABLE:</strong><br>
+            Allocating ₱${totalDailyNeeded.toFixed(2)} daily to missions. 
+            You have a <strong>₱${surplus.toFixed(2)} daily surplus</strong> for non-essential spending.`;
     }
 }
 
