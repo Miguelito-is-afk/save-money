@@ -1,5 +1,3 @@
-// STATE MANAGEMENT
-// state.js
 let state = initializeState();
 
 function initializeState() {
@@ -25,6 +23,7 @@ function recalculateBalance() {
     state.balance = state.history.reduce((sum, item) => sum + item.amount, 0);
     state.graphData = [0];
     let running = 0;
+    // Rebuild graph data correctly
     [...state.history].reverse().forEach(t => { 
         running += t.amount; 
         state.graphData.push(running); 
@@ -35,7 +34,7 @@ function detectCategory(desc) {
     const d = desc.toLowerCase();
     if (d.includes('food')) return '🍔';
     if (d.includes('fare') || d.includes('jeep')) return '🚙';
-    if (d.includes('game')) return '🎮';
-    if (d.includes('school')) return '📚';
+    if (d.includes('game') || d.includes('roblox') || d.includes('codm')) return '🎮';
+    if (d.includes('school') || d.includes('project')) return '📚';
     return '💳'; 
 }
