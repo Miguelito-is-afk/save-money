@@ -47,17 +47,19 @@ function checkFuelPanel() {
     const alreadyConfirmed = state.lastFuelDate === todayDateString;
 
     if (isPayday && !alreadyConfirmed && state.goal.target > 0) {
-        // Calculate the daily drain requirement right here
+        // MATCH THE ADVISORY LOGIC:
         const targetDate = new Date(state.goal.date);
         targetDate.setDate(targetDate.getDate() - state.goal.buffer);
         const daysLeft = Math.max(1, Math.ceil((targetDate - new Date()) / (1000 * 60 * 60 * 24)));
         const remaining = state.goal.target - state.balance;
         
-        // This is your ₱15.80 (or whatever the current requirement is)
+        // This is your ₱23.80 (the actual amount needed to save today)
         const dailyReq = Math.max(0, remaining / daysLeft);
         
-        document.getElementById('fuel-message').innerText = `Goal: ${state.goal.name}. Neural link suggests syncing ₱${dailyReq.toFixed(2)} to stay on track. Confirm?`;
-        fuelPanel.dataset.pendingAmount = dailyReq; // Temporarily store it
+        document.getElementById('fuel-message').innerText = `Mission Sync: ${state.goal.name}. Confirm today's quota of ₱${dailyReq.toFixed(2)}?`;
+        
+        // Save the dailyReq into a temporary data attribute so confirmFuel can find it
+        fuelPanel.setAttribute('data-pending', dailyReq); 
         fuelPanel.style.display = 'block';
     } else {
         fuelPanel.style.display = 'none';
@@ -67,26 +69,28 @@ function checkFuelPanel() {
 function confirmFuel(received) {
     const fuelPanel = document.getElementById('fuel-panel');
     const todayDateString = new Date().toLocaleDateString();
-    const amount = parseFloat(fuelPanel.dataset.pendingAmount) || 0;
+    const amountToSync = parseFloat(fuelPanel.getAttribute('data-pending')) || 0;
 
-    if (received && amount > 0) {
-        state.balance += amount;
+    if (received && amountToSync > 0) {
+        state.balance += amountToSync;
         state.history.unshift({
             id: Date.now(),
             date: todayDateString,
-            desc: `⛽ GOAL FUEL: ${state.goal.name}`,
-            amount: amount,
-            icon: '🎯',
+            desc: `🎯 MISSION QUOTA: ${state.goal.name}`,
+            amount: amountToSync,
+            icon: '⚡',
             spendType: 'income'
         });
         state.graphData.push(state.balance);
         state.streak++;
-        alert(`Mission Synced. ₱${amount.toFixed(2)} allocated to Asset Acquisition.`);
+        alert(`Neural Link Established. ₱${amountToSync.toFixed(2)} added to Mission Assets.`);
     }
 
     state.lastFuelDate = todayDateString;
+    fuelPanel.style.display = 'none'; // Force hide immediately
     save(); 
 }
+
 
 // V4 CATEGORIZATION & ANOMALY ENGINE
 function detectCategoryAndAnomaly(desc, amount) {
