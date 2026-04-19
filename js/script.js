@@ -291,15 +291,13 @@ function calculateAetherLogic() {
     const actionZone = document.getElementById('action-zone');
     actionZone.innerHTML = ""; 
 
-    // 1. Payday Detection
+    const todayDateString = new Date().toLocaleDateString();
+    const alreadyConfirmed = state.lastFuelDate === todayDateString;
     const today = new Date().getDay(); 
     const isPayday = state.incomeSchedule.includes(today);
     
-    // 2. Calculate Fuel per Active Day (e.g., ₱200 / 4 days = ₱50/day)
     const numPaydays = state.incomeSchedule.length || 1;
     const amountPerPayday = state.income / numPaydays;
-    
-    // 3. Current Daily Context
     const dailyIncome = isPayday ? amountPerPayday : 0;
     
     if (state.goal.target > 0) {
@@ -316,13 +314,29 @@ function calculateAetherLogic() {
 
         document.getElementById('goal-stats').innerText = remaining > 0 ? `₱${remaining.toLocaleString()} remaining` : "Quota Met";
 
+        // 1. MISSION COMPLETE
         if (remaining <= 0) {
             healthEl.innerText = "MAX RESONANCE";
             healthEl.style.color = "var(--success)";
             adviceEl.innerText = `Objective achieved. ${state.goal.name} is ready for acquisition.`;
             actionZone.innerHTML = `<button onclick="redeemGoal()" class="claim-btn">REDEEM ASSET</button>`;
         } 
-        // --- NON-PAYDAY MODE (Fridays/Weekends) ---
+        // 2. DAILY QUOTA ALREADY PAID
+        else if (alreadyConfirmed) {
+            healthEl.innerText = "QUOTA MET";
+            healthEl.style.color = "var(--success)";
+            
+            // Calculate tomorrow's requirement
+            const tomorrowReq = remaining / Math.max(1, daysLeft - 1);
+            
+            adviceEl.innerHTML = `
+                ✅ <strong>Daily Sync Complete.</strong><br>
+                You've fueled the mission for today. Your next tactical sync is scheduled for tomorrow.<br>
+                <small>Estimated tomorrow's quota: ₱${tomorrowReq.toFixed(2)}</small>
+            `;
+            generatePredictions(dailyReq, 0, 0); 
+        }
+        // 3. NON-PAYDAY MODE
         else if (!isPayday) {
             healthEl.innerText = "NEURAL STANDBY";
             healthEl.style.color = "var(--text-muted)";
@@ -330,7 +344,7 @@ function calculateAetherLogic() {
             Current daily drain required for goal: ₱${dailyReq.toFixed(2)}. Stay frosty.`;
             generatePredictions(dailyReq, 0, 0); 
         } 
-        // --- ACTIVE PAYDAY MODE (School Days) ---
+        // 4. ACTIVE PAYDAY (NEEDS FUEL)
         else {
             const projectedBurn = (state.trueDailyBurn && state.trueDailyBurn > 0) ? state.trueDailyBurn : (dailyIncome * 0.2);
             const surplus = dailyIncome - projectedBurn - dailyReq;
@@ -355,11 +369,7 @@ function calculateAetherLogic() {
             generatePredictions(dailyReq, surplus, projectedBurn);
         }
     } else {
-        // --- NO ACTIVE GOAL ---
-        document.getElementById('goal-progress-bar').style.width = `0%`;
-        document.getElementById('progress-percent').innerText = `0%`;
-        document.getElementById('goal-stats').innerText = `Awaiting Data`;
-
+        // NO ACTIVE GOAL LOGIC...
         healthEl.innerText = "ACCUMULATING";
         healthEl.style.color = "var(--success)";
         adviceEl.innerHTML = `No active mission. Wealth-Building Mode Active.`;
