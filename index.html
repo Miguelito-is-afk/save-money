@@ -3,36 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AETHER CORE v5 | Quantum Vault</title>
-    
+    <title>AETHER CORE v3 | Quantum Vault</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <link rel="stylesheet" href="css/variable.css">
-    <link rel="stylesheet" href="css/base.css">
-    <link rel="stylesheet" href="css/layout.css">
-    <link rel="stylesheet" href="css/components.css">
-    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/style.css">
 </head>
-
-<body class="dark-mode">
+<body class="light-mode">
     <div class="app-shell">
         <aside class="sidebar">
             <div class="brand hover-scale">
                 <i class="fas fa-atom aura-pulse"></i>
-                <span>AETHER v5</span>
+                <span>AETHER CORE</span>
             </div>
             <nav class="nav-menu">
-                <a href="#" class="nav-link active hover-lift"><i class="fas fa-layer-group"></i> Command Center</a>
+                <a href="#" class="nav-link active hover-lift"><i class="fas fa-layer-group"></i> Dashboard</a>
                 <a href="#" class="nav-link hover-lift" onclick="toggleSettings()"><i class="fas fa-sliders"></i> System Config</a>
-                <a href="#" class="nav-link hover-lift" onclick="exportData()"><i class="fas fa-download"></i> Backup Data</a>
+                <a href="#" class="nav-link hover-lift" onclick="exportData()"><i class="fas fa-download"></i> Data Export</a>
             </nav>
             
             <div class="system-tag hover-lift">
                 <p>Tactical Lead</p>
                 <strong id="user-display">MIGUEL | PSHS-CRC</strong>
-                <div class="level-badge badge-success badge" id="aura-level">LVL 1</div>
+                <div class="level-badge" id="aura-level">LVL 1</div>
             </div>
         </aside>
 
@@ -42,87 +35,114 @@
                     <h1 id="greeting">Neural Sync Active</h1>
                     <p id="current-date"></p>
                 </div>
-                <div class="health-badge animate-slide-down">
-                    <span class="badge-label">AURA STATUS:</span>
-                    <strong id="health-score">SYNCED</strong>
+                <div class="health-badge aura-glow animate-slide-down">
+                    <span>AURA STATUS:</span>
+                    <strong id="health-score">UNSYNCED</strong>
                 </div>
             </header>
 
             <section id="tactical-advisory" class="advisory-card animate-in fade-delay-1 hover-lift-slight">
                 <div class="advisory-icon"><i class="fas fa-brain"></i></div>
                 <div class="advisory-content">
-                    <h3>QUANTUM AI ADVISORY</h3>
-                    <div id="smart-advice" class="detailed-advice">Initializing neural link...</div>
+                    <h3>QUANTUM ADVISORY</h3>
+                    <p id="smart-advice">Initializing neural link... analyzing financial vectors.</p>
+                    <small id="burn-rate-display" class="burn-rate-text"></small>
                 </div>
+                <div id="action-zone"></div>
             </section>
 
             <section class="stats-grid">
                 <div class="stat-card animate-in fade-delay-2 hover-lift">
-                    <span class="label stat-label">Liquid Assets</span>
-                    <h2 id="total-balance" class="stat-value">₱0.00</h2>
-                    <div class="stat-meta badge badge-warning" id="streak-count">🔥 0 Day Pulse</div>
+                    <div class="card-header-flex">
+                        <span class="label">Liquid Assets</span>
+                        <button onclick="editStat('balance')" class="icon-btn"><i class="fas fa-pen"></i></button>
+                    </div>
+                    <h2 id="total-balance" class="counter-up">₱0.00</h2>
+                    <div class="stat-meta" id="streak-count">🔥 0 Day Pulse</div>
                 </div>
                 <div class="stat-card animate-in fade-delay-3 hover-lift">
-                    <div class="flex-between">
-                        <span class="label stat-label">Weekly Fuel Target</span>
-                        <button onclick="editStat('income')" class="icon-btn btn-ghost"><i class="fas fa-pen"></i></button>
+                    <div class="card-header-flex">
+                        <span class="label">Weekly Fuel</span>
+                        <button onclick="editStat('income')" class="icon-btn"><i class="fas fa-pen"></i></button>
                     </div>
-                    <h2 id="weekly-inc" class="stat-value">₱0.00</h2>
+                    <h2 id="weekly-inc">₱0.00</h2>
                     <div class="stat-meta">Income Stream</div>
                 </div>
                 <div class="stat-card animate-in fade-delay-4 hover-lift">
-                    <span class="label stat-label">Total Burn (30 Days)</span>
-                    <h2 id="monthly-burn" class="stat-value">₱0.00</h2>
-                    <div id="burn-rate-display" class="stat-meta">Expense Analytics</div>
+                    <span class="label">Safety Buffer</span>
+                    <h2 id="buffer-display">0 Days</h2>
+                    <div class="stat-meta">Early Completion Target</div>
                 </div>
             </section>
 
             <div class="split-layout">
                 <div class="flex-column">
-                    <section class="card animate-in glass p-2">
+                    <section class="card animate-in fade-delay-5 hover-lift-slight">
                         <h3><i class="fas fa-chart-line"></i> Asset Growth Vector</h3>
-                        <div class="chart-container" style="height: 250px;">
+                        <div class="chart-container">
                             <canvas id="balanceChart"></canvas>
                         </div>
                     </section>
 
-                    <section class="card animate-in glass p-2">
-                        <h3><i class="fas fa-crosshairs"></i> Dynamic Resource Allocation</h3>
-                        <div id="goals-container" class="mt-1"></div>
-                        <button onclick="toggleGoalModal()" class="btn btn-primary mt-1" style="width: 100%;">+ Add Mission</button>
+                    <section class="card animate-in fade-delay-6 hover-lift-slight">
+                        <h3><i class="fas fa-satellite-dish"></i> 7-Day Wealth Projection</h3>
+                        <table class="prediction-table">
+                            <thead>
+                                <tr><th>Sequence</th><th>Projected Balance</th><th>Required Goal</th></tr>
+                            </thead>
+                            <tbody id="prediction-body"></tbody>
+                        </table>
                     </section>
                 </div>
 
                 <div class="flex-column">
-                    <section class="card animate-in glass p-2">
-                        <h3><i class="fas fa-bolt"></i> Quantum Entry</h3>
-                        <form id="transaction-form" class="smart-form mt-1">
-                            <div class="form-group input-group">
-                                <input type="text" id="desc" class="input-control" placeholder="Description" required>
-                                <input type="number" id="amount" class="input-control" placeholder="Amount" required step="0.01">
+                    <section class="card goal-card animate-in fade-delay-5 hover-lift-slight">
+                        <h3><i class="fas fa-crosshairs"></i> CURRENT MISSION: <span id="goal-name-display">VOID</span></h3>
+                        <div class="progress-wrapper">
+                            <div class="progress-container">
+                                <div id="goal-progress-bar" class="progress-bar aura-bg"></div>
                             </div>
-                            <div class="form-group input-group flex-between mt-1">
-                                <select id="type" class="input-control" style="width: 48%;">
-                                    <option value="expense">DEBIT</option>
-                                    <option value="income">CREDIT</option>
+                            <div class="progress-labels">
+                                <span id="progress-percent">0%</span>
+                                <span id="goal-stats">₱0.00 remaining</span>
+                            </div>
+                        </div>
+                        
+                        <form id="goal-form" class="smart-form">
+                            <input type="text" id="goal-name" placeholder="Target Objective" required>
+                            <input type="number" id="goal-target" placeholder="Value (₱)" required>
+                            <div class="input-group">
+                                <input type="date" id="goal-date" required>
+                                <input type="number" id="goal-buffer" placeholder="Safety Buffer (Days)" value="0">
+                            </div>
+                            <button type="submit" class="btn-secondary hover-glow">Initialize Mission</button>
+                        </form>
+                    </section>
+
+                    <section class="card animate-in fade-delay-6 hover-lift-slight">
+                        <h3><i class="fas fa-bolt"></i> Quantum Entry</h3>
+                        <form id="transaction-form" class="smart-form">
+                            <div class="input-group">
+                                <input type="text" id="desc" placeholder="E.g., Jeepney, Food, Game Credits..." required>
+                                <input type="number" id="amount" placeholder="Amount" required>
+                            </div>
+                            <div class="input-group">
+                                <select id="type">
+                                    <option value="expense">DEBIT (Expense)</option>
+                                    <option value="income">CREDIT (Income)</option>
                                 </select>
-                                <button type="submit" class="btn btn-primary" style="width: 48%;">LOG DATA</button>
+                                <button type="submit" class="btn-primary hover-glow">LOG DATA</button>
                             </div>
                         </form>
                     </section>
 
-                    <section class="card animate-in glass p-2">
-                        <h3><i class="fas fa-chart-pie"></i> Spending Analytics</h3>
-                        <div class="analytics-grid mt-1" id="category-analytics"></div>
-                    </section>
-
-                    <section class="card animate-in glass p-2">
-                        <div class="flex-between">
+                    <section class="card animate-in fade-delay-7 hover-lift-slight">
+                        <div class="card-header-flex">
                             <h3><i class="fas fa-database"></i> Activity Ledger</h3>
-                            <button id="clear-data" class="btn btn-ghost">Purge</button>
+                            <button id="clear-data" class="text-btn hover-scale">Purge System</button>
                         </div>
-                        <div class="ledger-container mt-1">
-                            <table id="history-table" style="width: 100%;">
+                        <div class="ledger-container">
+                            <table id="history-table">
                                 <tbody id="history-body"></tbody>
                             </table>
                         </div>
@@ -133,40 +153,28 @@
     </div>
 
     <div id="settings-modal" class="modal-overlay">
-        <div class="modal-content card">
-            <h2 class="mb-1">System Config</h2>
-            <div class="form-group mt-1">
-                <input type="text" id="settings-name" class="input-control" placeholder="User Name">
+        <div class="modal-card animate-scale-up">
+            <div class="modal-header">
+                <h2>System Configuration</h2>
+                <button onclick="toggleSettings()" class="close-btn hover-scale">&times;</button>
             </div>
-            <div class="flex-between mt-1 mb-1">
-                <span>Dark Mode</span>
-                <input type="checkbox" id="dark-mode-toggle">
+            <div class="modal-body">
+                <div class="setting-item">
+                    <span>Dark Matter Mode</span>
+                    <label class="switch">
+                        <input type="checkbox" id="dark-mode-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <span>Profile Signature</span>
+                    <input type="text" id="settings-name" placeholder="Enter name..." class="input-styled">
+                </div>
+                <button onclick="saveSettings()" class="btn-primary hover-glow" style="margin-top: 1rem;">Sync Configuration</button>
             </div>
-            <button onclick="saveSettings()" class="btn btn-primary mt-1" style="width: 100%;">Sync</button>
-            <button onclick="toggleSettings()" class="btn btn-ghost mt-1" style="width: 100%;">Close</button>
         </div>
     </div>
 
-    <div id="goal-modal" class="modal-overlay">
-        <div class="modal-content card">
-            <h2 class="mb-1">New Mission</h2>
-            <form id="new-goal-form">
-                <input type="text" id="goal-name" class="input-control mt-1" placeholder="Target Name" required>
-                <input type="number" id="goal-target" class="input-control mt-1" placeholder="Value" required>
-                <input type="date" id="goal-date" class="input-control mt-1" required>
-                <select id="goal-priority" class="input-control mt-1">
-                    <option value="3">High</option>
-                    <option value="2">Med</option>
-                    <option value="1">Low</option>
-                </select>
-                <button type="submit" class="btn btn-primary mt-1" style="width: 100%;">Deploy</button>
-                <button type="button" onclick="toggleGoalModal()" class="btn btn-ghost mt-1" style="width: 100%;">Cancel</button>
-            </form>
-        </div>
-    </div>
-
-    <script src="js/state.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/app.js"></script>
+    <script src="js/script.js"></script>
 </body>
 </html>
