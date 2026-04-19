@@ -1,26 +1,21 @@
-// AETHER CORE v4.0 - Quantum Neural Engine
-// Lead Architect: Miguel | PSHS-CRC
-// Multi-Goal DRA (Dynamic Resource Allocation) & Mutable Ledger
+// AETHER CORE v5.0 - Full AI Quantum Build
+// Multi-Goal DRA & Advanced Financial Directives
 
-// Data Migration & Initialization
 function initializeState() {
     let saved;
     try {
-        saved = JSON.parse(localStorage.getItem('aetherCoreDataV4'));
+        saved = JSON.parse(localStorage.getItem('aetherCoreDataV5'));
     } catch (e) {
         console.error("Corrupted save detected. Resetting to safe state...");
         saved = null;
     }
     
-    // Ensure default structure if saved data is missing or incomplete
+    // Completely blank slate for user customization
     const defaultState = {
         balance: 0,
         history: [],
-        goals: [
-            { id: 101, name: "Monthsary Gift (8th)", target: 500, priority: 3, date: "2026-05-08" },
-            { id: 102, name: "Roblox Premium", target: 500, priority: 1, date: "2026-06-01" }
-        ],
-        income: 1000,
+        goals: [], 
+        income: 1000, // Expected weekly income
         streak: 0,
         graphData: [0],
         settings: { darkMode: true, name: "MIGUEL | PSHS-CRC" }
@@ -28,7 +23,6 @@ function initializeState() {
 
     if (!saved) return defaultState;
 
-    // Safety checks for legacy or missing keys
     saved.history = saved.history || [];
     saved.goals = saved.goals || [];
     saved.settings = saved.settings || defaultState.settings;
@@ -59,13 +53,13 @@ function detectCategory(desc) {
     return '💳'; 
 }
 
-// ------------------ UI LOGIC ------------------
+// ------------------ UI & SETTINGS ------------------
 
 function toggleSettings() {
     const modal = document.getElementById('settings-modal');
     modal.classList.toggle('active');
     if(modal.classList.contains('active')) {
-        document.getElementById('settings-name').value = state.settings.name || "MIGUEL | PSHS-CRC";
+        document.getElementById('settings-name').value = state.settings.name;
         document.getElementById('dark-mode-toggle').checked = state.settings.darkMode;
     }
 }
@@ -92,7 +86,7 @@ function applySettings() {
     }
 }
 
-// ------------------ MUTABLE LEDGER LOGIC ------------------
+// ------------------ LEDGER LOGIC ------------------
 
 document.getElementById('transaction-form').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -104,7 +98,7 @@ document.getElementById('transaction-form').addEventListener('submit', (e) => {
 
     state.history.unshift({
         id: Date.now(),
-        timestamp: Date.now(), // Reliable timestamp for analytics
+        timestamp: Date.now(),
         date: new Date().toLocaleDateString(),
         desc: desc,
         amount: entryAmount,
@@ -156,11 +150,8 @@ function deleteEntry() {
     closeEditModal();
 }
 
-// Ensures balance and graph data always match exact ledger history
 function recalculateBalance() {
     state.balance = state.history.reduce((sum, item) => sum + item.amount, 0);
-    
-    // Rebuild graph completely to prevent mismatch
     state.graphData = [0];
     let running = 0;
     const chrono = [...state.history].reverse();
@@ -170,7 +161,7 @@ function recalculateBalance() {
     });
 }
 
-// ------------------ DRAE (MULTI-GOAL LOGIC) ------------------
+// ------------------ GOAL & ADVISORY ENGINE ------------------
 
 document.getElementById('new-goal-form').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -191,7 +182,6 @@ function redeemGoal(id) {
     if(goalIndex === -1) return;
     const goal = state.goals[goalIndex];
 
-    // Log it as an expense (asset acquired)
     state.history.unshift({
         id: Date.now(),
         timestamp: Date.now(),
@@ -201,12 +191,9 @@ function redeemGoal(id) {
         icon: '🎯'
     });
 
-    // Remove goal
     state.goals.splice(goalIndex, 1);
-    
     recalculateBalance();
     save();
-    alert(`System Alert: Mission [${goal.name}] Accomplished. Funds deducted.`);
 }
 
 function deleteGoal(id) {
@@ -216,41 +203,13 @@ function deleteGoal(id) {
     }
 }
 
-// ------------------ CORE UPDATES & RENDERING ------------------
-
-function editStat(type) {
-    let newVal = prompt(`Update Configuration [${type.toUpperCase()}]:`, state[type]);
-    if (newVal !== null) {
-        let parsedVal = parseFloat(newVal);
-        if (!isNaN(parsedVal) && parsedVal >= 0) {
-            state[type] = parsedVal;
-            save();
-        } else {
-            alert("Invalid input. Please enter a valid number.");
-        }
-    }
-}
-
-function save() {
-    localStorage.setItem('aetherCoreDataV4', JSON.stringify(state));
-    updateUI();
-}
-
+// The Core AI Advisory Logic
 function renderGoalsAndAether() {
     const container = document.getElementById('goals-container');
     const healthEl = document.getElementById('health-score');
     const adviceEl = document.getElementById('smart-advice');
     
-    // GOAL-LESS OPERATION (Free floating mode)
-    if (state.goals.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding: 2rem; color: var(--text-muted);"><i class="fas fa-infinity" style="font-size:2rem; margin-bottom:1rem;"></i><br>Free-Floating Asset Mode.<br>Accumulate wealth for future allocation.</div>`;
-        healthEl.innerText = "ACCUMULATING";
-        healthEl.style.color = "var(--primary)";
-        adviceEl.innerText = `No active missions. Surplus funds are building your general safety net. Liquid Assets: ₱${state.balance.toFixed(2)}`;
-        return;
-    }
-
-    // SORT BY PRIORITY (3 = High, 1 = Low), then by nearest date
+    // Sort logic
     let sortedGoals = [...state.goals].sort((a, b) => {
         if(b.priority !== a.priority) return b.priority - a.priority;
         return new Date(a.date) - new Date(b.date);
@@ -258,12 +217,12 @@ function renderGoalsAndAether() {
 
     let availableBalance = state.balance;
     let html = "";
-    let overallHealth = "STABLE";
-    let closestAdvice = "";
+    
+    let totalDailyNeeded = 0;
+    let missionsReady = 0;
 
-    sortedGoals.forEach((goal, index) => {
-        let allocated = Math.min(availableBalance, goal.target);
-        allocated = Math.max(0, allocated); // Prevent negative allocation
+    sortedGoals.forEach((goal) => {
+        let allocated = Math.max(0, Math.min(availableBalance, goal.target));
         availableBalance -= allocated;
         
         let progress = (goal.target > 0) ? Math.min((allocated / goal.target) * 100, 100) : 0;
@@ -271,6 +230,14 @@ function renderGoalsAndAether() {
 
         let priorityLabel = goal.priority === 3 ? "badge-high" : (goal.priority === 2 ? "badge-med" : "badge-low");
         let priorityText = goal.priority === 3 ? "HIGH" : (goal.priority === 2 ? "MED" : "LOW");
+
+        if (remaining > 0) {
+            let daysLeft = Math.ceil((new Date(goal.date) - new Date()) / (1000 * 60 * 60 * 24));
+            daysLeft = Math.max(1, daysLeft); // Prevent division by zero
+            totalDailyNeeded += (remaining / daysLeft);
+        } else {
+            missionsReady++;
+        }
 
         let actionBtn = remaining <= 0 
             ? `<button onclick="redeemGoal(${goal.id})" class="btn-primary hover-glow" style="margin-top: 10px;">REDEEM ASSET</button>`
@@ -297,39 +264,61 @@ function renderGoalsAndAether() {
                 ${actionBtn}
             </div>
         `;
-
-        if(index === 0 && remaining > 0) {
-            const daysLeft = Math.ceil((new Date(goal.date) - new Date()) / (1000 * 60 * 60 * 24));
-            if(daysLeft > 0) {
-                let daily = remaining / daysLeft;
-                closestAdvice = `Focus: [${goal.name}]. Save ₱${daily.toFixed(2)} daily to secure.`;
-                if(state.income > 0 && daily > state.income/7) overallHealth = "UNSTABLE";
-            } else {
-                closestAdvice = `Temporal breach on [${goal.name}]. Recalculate vectors.`;
-                overallHealth = "CRITICAL";
-            }
-        } else if (index === 0 && remaining <= 0) {
-            closestAdvice = `Priority Target [${goal.name}] is ready for acquisition.`;
-            overallHealth = "MAX RESONANCE";
-        }
     });
 
-    container.innerHTML = html;
+    container.innerHTML = html || `<div style="text-align:center; padding: 2rem; color: var(--text-muted);">No active missions. Add a goal to start DRA allocation.</div>`;
     
-    healthEl.innerText = overallHealth;
-    if(overallHealth === "UNSTABLE") healthEl.style.color = "var(--warning)";
-    else if(overallHealth === "CRITICAL") healthEl.style.color = "var(--danger)";
-    else if(overallHealth === "MAX RESONANCE") healthEl.style.color = "var(--success)";
-    else healthEl.style.color = "var(--primary)";
+    // --- AI CALCULATIONS & READOUT ---
+    const dailyIncome = state.income / 7;
+    const baseSavingsTarget = dailyIncome * 0.20; // 20% rule
+    const safeToSpend = dailyIncome - Math.max(baseSavingsTarget, totalDailyNeeded);
+    
+    // Determine Overall Health
+    let healthStatus = "OPTIMAL";
+    let healthColor = "var(--success)";
+    
+    if (state.balance < 0) {
+        healthStatus = "CRITICAL DEBT";
+        healthColor = "var(--danger)";
+    } else if (totalDailyNeeded > dailyIncome) {
+        healthStatus = "DEFICIT VECTOR";
+        healthColor = "var(--danger)";
+    } else if (totalDailyNeeded + baseSavingsTarget > dailyIncome) {
+        healthStatus = "TIGHT MARGINS";
+        healthColor = "var(--warning)";
+    } else if (missionsReady > 0) {
+        healthStatus = "MISSION READY";
+        healthColor = "var(--success)";
+    }
 
-    adviceEl.innerText = closestAdvice;
+    healthEl.innerText = healthStatus;
+    healthEl.style.color = healthColor;
+
+    // Generate Full Advisory Report
+    let advisoryHTML = `<ul style="list-style:none; padding:0; margin:0; line-height: 1.6; font-size: 0.95rem;">`;
+    
+    // 1. General Savings Directive
+    advisoryHTML += `<li><i class="fas fa-piggy-bank" style="color:var(--accent); width:20px;"></i> <strong>Base Protocol:</strong> Save at least 20% of income (₱${baseSavingsTarget.toFixed(2)}/day or ₱${(baseSavingsTarget*7).toFixed(2)}/week) for long-term vaulting.</li>`;
+    
+    // 2. Goal Directive
+    if (state.goals.length > 0) {
+        advisoryHTML += `<li><i class="fas fa-bullseye" style="color:var(--primary); width:20px;"></i> <strong>Mission Requirements:</strong> You must save exactly <strong>₱${totalDailyNeeded.toFixed(2)} daily</strong> to hit all your active deadlines.</li>`;
+    }
+
+    // 3. Spending Allowance
+    if (safeToSpend > 0) {
+        advisoryHTML += `<li><i class="fas fa-check-circle" style="color:var(--success); width:20px;"></i> <strong>Safe Daily Allowance:</strong> You can safely spend up to <strong>₱${safeToSpend.toFixed(2)}</strong> per day without jeopardizing goals or base savings.</li>`;
+    } else {
+        advisoryHTML += `<li><i class="fas fa-exclamation-triangle" style="color:var(--danger); width:20px;"></i> <strong>System Warning:</strong> Required savings exceed your income vector. Reduce spending instantly, extend mission deadlines, or increase income streams.</li>`;
+    }
+
+    advisoryHTML += `</ul>`;
+    adviceEl.innerHTML = advisoryHTML;
 }
 
 function renderAnalytics() {
     const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
-    
     const recentExpenses = state.history.filter(t => {
-        // Fallback to parsing date string if timestamp is missing from older data
         const time = t.timestamp ? t.timestamp : new Date(t.date).getTime();
         return t.amount < 0 && time >= thirtyDaysAgo;
     });
@@ -347,26 +336,24 @@ function renderAnalytics() {
     const analyticsGrid = document.getElementById('category-analytics');
     if(Object.keys(categories).length === 0) {
         analyticsGrid.innerHTML = `<div style="grid-column: span 2; text-align:center; color: var(--text-muted);">Insufficient data to run analysis.</div>`;
-        return;
+    } else {
+        const sortedCats = Object.entries(categories).sort((a, b) => b[1] - a[1]).slice(0,4);
+        analyticsGrid.innerHTML = sortedCats.map(([icon, amount]) => `
+            <div class="analytic-box">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">${icon}</div>
+                <strong style="color: var(--danger)">₱${amount.toFixed(0)}</strong>
+            </div>
+        `).join('');
     }
-
-    const sortedCats = Object.entries(categories).sort((a, b) => b[1] - a[1]).slice(0,4);
-    
-    analyticsGrid.innerHTML = sortedCats.map(([icon, amount]) => `
-        <div class="analytic-box">
-            <div style="font-size: 2rem; margin-bottom: 0.5rem;">${icon}</div>
-            <strong style="color: var(--danger)">₱${amount.toFixed(0)}</strong>
-        </div>
-    `).join('');
 
     const burnText = document.getElementById('burn-rate-display');
     if(recentExpenses.length > 2) {
         const avgBurn = totalBurn / 30; 
-        burnText.innerHTML = `<i class="fas fa-fire"></i> Est. Burn Rate: ₱${avgBurn.toFixed(2)} / day`;
-        burnText.style.color = (state.income > 0 && avgBurn > (state.income / 7)) ? '#fca5a5' : '#86efac';
+        burnText.innerHTML = `<i class="fas fa-fire"></i> Daily Burn: ₱${avgBurn.toFixed(2)}`;
+        burnText.style.color = (state.income > 0 && avgBurn > (state.income / 7)) ? '#ef4444' : '#10b981';
     } else {
         burnText.innerText = "Awaiting more expense data.";
-        burnText.style.color = '#fff';
+        burnText.style.color = 'var(--text-muted)';
     }
 }
 
@@ -391,7 +378,6 @@ function updateUI() {
     document.getElementById('weekly-inc').innerText = `₱${state.income.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
     document.getElementById('streak-count').innerText = `🔥 ${state.streak} Log Streak`;
     
-    // Added Math.max constraint just in case balance is heavily negative
     const level = Math.max(1, Math.floor(Math.max(0, state.balance) / 500) + 1);
     document.getElementById('aura-level').innerText = `LVL ${level}`;
 
@@ -401,16 +387,30 @@ function updateUI() {
     if (chartInstance) updateChart();
 }
 
-// ------------------ GRAPHICS ENGINE ------------------
+// ------------------ DATA UTILS & CHART ------------------
+
+function editStat(type) {
+    let newVal = prompt(`Update Configuration [${type.toUpperCase()}]:`, state[type]);
+    if (newVal !== null) {
+        let parsedVal = parseFloat(newVal);
+        if (!isNaN(parsedVal) && parsedVal >= 0) {
+            state[type] = parsedVal;
+            save();
+        } else {
+            alert("Invalid input. Please enter a valid number.");
+        }
+    }
+}
+
+function save() {
+    localStorage.setItem('aetherCoreDataV5', JSON.stringify(state));
+    updateUI();
+}
 
 function updateChart() {
     if(!chartInstance) return;
-
-    // Fix array mismatch to guarantee graph scales accurately
     const sliceLimit = Math.min(15, state.history.length);
     const historySlice = state.history.slice(0, sliceLimit).reverse();
-    
-    // Labels must match data points length. graphData starts with a '0' state.
     const labels = historySlice.length > 0 ? ['Start', ...historySlice.map(i => i.date)] : ['Start'];
     const dataSlice = state.graphData.slice(-(sliceLimit + 1));
 
@@ -460,7 +460,7 @@ function exportData() {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", `AETHER_v4_BACKUP_${new Date().getTime()}.json`);
+    downloadAnchorNode.setAttribute("download", `AETHER_v5_BACKUP_${new Date().getTime()}.json`);
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
@@ -468,7 +468,7 @@ function exportData() {
 
 document.getElementById('clear-data').addEventListener('click', () => {
     if (confirm("WARNING: Initiating total system purge. All data will be destroyed. Proceed?")) {
-        localStorage.removeItem('aetherCoreDataV4');
+        localStorage.removeItem('aetherCoreDataV5');
         location.reload();
     }
 });
