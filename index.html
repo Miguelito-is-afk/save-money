@@ -22,10 +22,10 @@
                 <a href="#" class="nav-link hover-lift" onclick="exportData()"><i class="fas fa-download"></i> Backup Data</a>
             </nav>
             
-            <div class="system-tag hover-lift">
-                <p>Tactical Lead</p>
-                <strong id="user-display">MIGUEL | PSHS-CRC</strong>
-                <div class="level-badge" id="aura-level">LVL 1</div>
+            <div class="system-tag hover-lift" style="margin-top: auto; padding: 1.25rem; background: rgba(99, 102, 241, 0.05); border: 1px dashed var(--primary-glow); border-radius: var(--radius-sm);">
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">Tactical Lead</p>
+                <strong id="user-display" style="display: block; margin-bottom: 0.5rem;">MIGUEL | PSHS-CRC</strong>
+                <div class="level-badge badge-success badge" id="aura-level">LVL 1</div>
             </div>
         </aside>
 
@@ -33,96 +33,103 @@
             <header class="top-bar">
                 <div class="welcome-text animate-slide-down">
                     <h1 id="greeting">Neural Sync Active</h1>
-                    <p id="current-date"></p>
+                    <p id="current-date" style="color: var(--text-muted);"></p>
                 </div>
-                <div class="health-badge aura-glow animate-slide-down">
-                    <span>AURA STATUS:</span>
-                    <strong id="health-score">UNSYNCED</strong>
+                <div class="health-badge aura-glow animate-slide-down" style="padding: 10px 20px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">AURA STATUS:</span>
+                    <strong id="health-score" style="margin-left: 10px;">UNSYNCED</strong>
                 </div>
             </header>
 
             <section id="tactical-advisory" class="advisory-card animate-in fade-delay-1 hover-lift-slight">
-                <div class="advisory-icon"><i class="fas fa-brain"></i></div>
+                <div class="advisory-icon" style="font-size: 2.5rem;"><i class="fas fa-brain"></i></div>
                 <div class="advisory-content" style="width: 100%;">
-                    <h3>QUANTUM AI ADVISORY</h3>
+                    <h3 style="margin-bottom: 10px;">QUANTUM AI ADVISORY</h3>
                     <div id="smart-advice" class="detailed-advice">Initializing neural link... analyzing financial vectors.</div>
                 </div>
             </section>
 
             <section class="stats-grid">
                 <div class="stat-card animate-in fade-delay-2 hover-lift">
-                    <div class="card-header-flex">
-                        <span class="label">Liquid Assets</span>
+                    <div class="card-header-flex flex-between">
+                        <span class="label stat-label">Liquid Assets</span>
                     </div>
-                    <h2 id="total-balance">₱0.00</h2>
-                    <div class="stat-meta" id="streak-count">🔥 0 Day Pulse</div>
+                    <h2 id="total-balance" class="stat-value">₱0.00</h2>
+                    <div class="stat-meta badge badge-warning" id="streak-count" style="display: inline-block;">🔥 0 Day Pulse</div>
                 </div>
                 <div class="stat-card animate-in fade-delay-3 hover-lift">
-                    <div class="card-header-flex">
-                        <span class="label">Weekly Fuel Target</span>
-                        <button onclick="editStat('income')" class="icon-btn" title="Edit Expected Weekly Income"><i class="fas fa-pen"></i></button>
+                    <div class="card-header-flex flex-between">
+                        <span class="label stat-label">Weekly Fuel Target</span>
+                        <button onclick="editStat('income')" class="icon-btn btn-ghost" title="Edit Expected Weekly Income" style="border: none; border-radius: 5px; padding: 5px;"><i class="fas fa-pen"></i></button>
                     </div>
-                    <h2 id="weekly-inc">₱0.00</h2>
-                    <div class="stat-meta">Income Stream</div>
+                    <h2 id="weekly-inc" class="stat-value">₱0.00</h2>
+                    <div class="stat-meta" style="font-size: 0.85rem; color: var(--text-muted);">Income Stream</div>
                 </div>
                 <div class="stat-card animate-in fade-delay-4 hover-lift">
-                    <span class="label">Total Burn (30 Days)</span>
-                    <h2 id="monthly-burn">₱0.00</h2>
-                    <div id="burn-rate-display" class="stat-meta" style="margin-top: 5px;">Expense Analytics</div>
+                    <span class="label stat-label">Total Burn (30 Days)</span>
+                    <h2 id="monthly-burn" class="stat-value">₱0.00</h2>
+                    <div id="burn-rate-display" class="stat-meta" style="margin-top: 5px; font-size: 0.85rem;">Expense Analytics</div>
                 </div>
             </section>
 
-            <div class="split-layout">
-                <div class="flex-column">
-                    <section class="card animate-in fade-delay-5 hover-lift-slight">
-                        <h3><i class="fas fa-chart-line"></i> Asset Growth Vector</h3>
-                        <div class="chart-container">
+            <div class="split-layout" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem;">
+                <div class="flex-column" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                    <section class="card animate-in fade-delay-5 hover-lift-slight glass p-2">
+                        <h3 style="margin-bottom: 1rem;"><i class="fas fa-chart-line"></i> Asset Growth Vector</h3>
+                        <div class="chart-container" style="height: 250px;">
                             <canvas id="balanceChart"></canvas>
                         </div>
                     </section>
 
-                    <section class="card animate-in fade-delay-6 hover-lift-slight">
+                    <section class="card animate-in fade-delay-6 hover-lift-slight glass p-2">
                         <h3><i class="fas fa-crosshairs"></i> Dynamic Resource Allocation (DRA)</h3>
                         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">System auto-allocates liquid assets based on priority tier.</p>
                         
-                        <div id="goals-container">
-                        </div>
+                        <div id="goals-container"></div>
 
-                        <button onclick="toggleGoalModal()" class="btn-secondary hover-glow" style="margin-top: 1rem;">+ Add New Mission</button>
+                        <button onclick="toggleGoalModal()" class="btn btn-primary hover-glow" style="margin-top: 1rem; width: 100%;">+ Add New Mission</button>
                     </section>
                 </div>
 
-                <div class="flex-column">
-                    <section class="card animate-in fade-delay-6 hover-lift-slight">
+                <div class="flex-column" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                    <section class="card animate-in fade-delay-6 hover-lift-slight glass p-2">
                         <h3><i class="fas fa-bolt"></i> Quantum Entry</h3>
                         <form id="transaction-form" class="smart-form" style="margin-top: 1rem;">
-                            <div class="input-group">
-                                <input type="text" id="desc" placeholder="E.g., Jeepney, Food, CODM Credits..." required>
-                                <input type="number" id="amount" placeholder="Amount (₱)" required step="0.01">
+                            <div class="form-group input-group" style="display: flex; gap: 10px; margin-bottom: 10px;">
+                                <input type="text" id="desc" class="input-control" placeholder="E.g., Jeepney, Food..." required>
+                                <input type="number" id="amount" class="input-control" placeholder="Amount (₱)" required step="0.01" style="width: 150px;">
                             </div>
-                            <div class="input-group">
-                                <select id="type">
+                            <div class="form-group input-group" style="display: flex; gap: 10px;">
+                                <select id="type" class="input-control">
                                     <option value="expense">DEBIT (Expense)</option>
                                     <option value="income">CREDIT (Income)</option>
                                 </select>
-                                <button type="submit" class="btn-primary hover-glow">LOG DATA</button>
+                                <button type="submit" class="btn btn-primary hover-glow">LOG DATA</button>
                             </div>
                         </form>
                     </section>
 
-                    <section class="card animate-in fade-delay-7 hover-lift-slight">
-                        <h3><i class="fas fa-chart-pie"></i> Spending Analytics</h3>
-                        <div class="analytics-grid" id="category-analytics">
+                    <section class="card animate-in fade-delay-7 hover-lift-slight glass p-2">
+                        <h3 style="margin-bottom: 1rem;"><i class="fas fa-chart-pie"></i> Spending Analytics</h3>
+                        <div class="analytics-grid" id="category-analytics" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                         </div>
                     </section>
 
-                    <section class="card animate-in fade-delay-7 hover-lift-slight">
-                        <div class="card-header-flex">
+                    <section class="card animate-in fade-delay-7 hover-lift-slight glass p-2">
+                        <div class="card-header-flex flex-between" style="margin-bottom: 1rem;">
                             <h3><i class="fas fa-database"></i> Activity Ledger</h3>
-                            <button id="clear-data" class="text-btn hover-scale">Purge System</button>
+                            <button id="clear-data" class="btn btn-ghost hover-scale" style="padding: 5px 10px; font-size: 0.8rem;">Purge System</button>
                         </div>
-                        <div class="ledger-container" style="margin-top: 1rem;">
+                        <div class="ledger-container table-container" style="margin-top: 1rem; overflow-x: auto;">
                             <table id="history-table">
+                                <thead>
+                                    <tr>
+                                        <th>Cat</th>
+                                        <th>Description</th>
+                                        <th style="text-align: right;">Amount</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
                                 <tbody id="history-body"></tbody>
                             </table>
                         </div>
@@ -133,61 +140,61 @@
     </div>
 
     <div id="settings-modal" class="modal-overlay">
-        <div class="modal-card animate-scale-up">
-            <div class="modal-header">
+        <div class="modal-content animate-scale-up">
+            <div class="modal-header flex-between" style="margin-bottom: 1.5rem;">
                 <h2>System Configuration</h2>
-                <button type="button" onclick="toggleSettings()" class="close-btn hover-scale">&times;</button>
+                <button type="button" onclick="toggleSettings()" class="btn btn-ghost hover-scale" style="padding: 5px 10px;">&times;</button>
             </div>
-            <div class="modal-body">
-                <div class="setting-item">
-                    <span>Dark Matter Mode</span>
+            <div class="modal-body flex-column" style="display: flex; flex-direction: column; gap: 1rem;">
+                <div class="setting-item flex-between form-group">
+                    <span class="form-label" style="margin: 0;">Dark Matter Mode</span>
                     <label class="switch">
-                        <input type="checkbox" id="dark-mode-toggle">
-                        <span class="slider"></span>
+                        <input type="checkbox" id="dark-mode-toggle" style="display:none;">
+                        <div class="theme-switch" onclick="document.getElementById('dark-mode-toggle').click()"></div>
                     </label>
                 </div>
-                <div class="setting-item">
-                    <span>Profile Signature</span>
-                    <input type="text" id="settings-name" placeholder="Enter name..." class="input-styled">
+                <div class="setting-item form-group">
+                    <span class="form-label">Profile Signature</span>
+                    <input type="text" id="settings-name" placeholder="Enter name..." class="input-control">
                 </div>
-                <button onclick="saveSettings()" class="btn-primary hover-glow" style="margin-top: 1rem;">Sync Configuration</button>
+                <button onclick="saveSettings()" class="btn btn-primary hover-glow" style="margin-top: 1rem; width: 100%;">Sync Configuration</button>
             </div>
         </div>
     </div>
 
     <div id="goal-modal" class="modal-overlay">
-        <div class="modal-card animate-scale-up">
-            <div class="modal-header">
+        <div class="modal-content animate-scale-up">
+            <div class="modal-header flex-between" style="margin-bottom: 1.5rem;">
                 <h2>Initialize Mission</h2>
-                <button type="button" onclick="toggleGoalModal()" class="close-btn hover-scale">&times;</button>
+                <button type="button" onclick="toggleGoalModal()" class="btn btn-ghost hover-scale" style="padding: 5px 10px;">&times;</button>
             </div>
-            <form id="new-goal-form" class="smart-form">
-                <input type="text" id="goal-name" placeholder="Target Objective (e.g., PC Upgrade)" required>
-                <input type="number" id="goal-target" placeholder="Value (₱)" required step="0.01" min="0.01">
-                <input type="date" id="goal-date" required>
-                <select id="goal-priority" required>
+            <form id="new-goal-form" class="smart-form" style="display: flex; flex-direction: column; gap: 10px;">
+                <input type="text" id="goal-name" class="input-control" placeholder="Target Objective (e.g., PC Upgrade)" required>
+                <input type="number" id="goal-target" class="input-control" placeholder="Value (₱)" required step="0.01" min="0.01">
+                <input type="date" id="goal-date" class="input-control" required>
+                <select id="goal-priority" class="input-control" required>
                     <option value="3">High Priority (Fund First)</option>
                     <option value="2">Medium Priority</option>
                     <option value="1">Low Priority</option>
                 </select>
-                <button type="submit" class="btn-primary hover-glow">Deploy Mission</button>
+                <button type="submit" class="btn btn-primary hover-glow" style="margin-top: 10px;">Deploy Mission</button>
             </form>
         </div>
     </div>
 
     <div id="edit-modal" class="modal-overlay">
-        <div class="modal-card animate-scale-up">
-            <div class="modal-header">
+        <div class="modal-content animate-scale-up">
+            <div class="modal-header flex-between" style="margin-bottom: 1.5rem;">
                 <h2>Edit Ledger Entry</h2>
-                <button type="button" onclick="closeEditModal()" class="close-btn hover-scale">&times;</button>
+                <button type="button" onclick="closeEditModal()" class="btn btn-ghost hover-scale" style="padding: 5px 10px;">&times;</button>
             </div>
-            <form id="edit-entry-form" class="smart-form">
+            <form id="edit-entry-form" class="smart-form" style="display: flex; flex-direction: column; gap: 10px;">
                 <input type="hidden" id="edit-id">
-                <input type="text" id="edit-desc" placeholder="Description" required>
-                <input type="number" id="edit-amount" placeholder="Amount (Negative for expense)" required step="0.01">
+                <input type="text" id="edit-desc" class="input-control" placeholder="Description" required>
+                <input type="number" id="edit-amount" class="input-control" placeholder="Amount (Negative for expense)" required step="0.01">
                 <div style="display: flex; gap: 10px; margin-top: 1rem;">
-                    <button type="submit" class="btn-primary hover-glow">Save Changes</button>
-                    <button type="button" class="btn-danger hover-glow" onclick="deleteEntry()">Delete Entry</button>
+                    <button type="submit" class="btn btn-primary hover-glow" style="flex: 1;">Save</button>
+                    <button type="button" class="btn hover-glow" style="flex: 1; background: var(--danger); color: white;" onclick="deleteEntry()">Delete</button>
                 </div>
             </form>
         </div>
