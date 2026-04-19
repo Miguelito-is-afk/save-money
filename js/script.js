@@ -4,7 +4,7 @@
 let state = JSON.parse(localStorage.getItem('aetherCoreData')) || {
     balance: 0,
     history: [],
-    goal: { name: "VOID", target: 0, date: null, buffer: 0 },
+    goals: [],
     income: 800,
     streak: 0,
     graphData: [0],
@@ -231,12 +231,19 @@ function generatePredictions(dailyTarget) {
 
 function renderLedger() {
     const body = document.getElementById('history-body');
-    body.innerHTML = state.history.slice(0, 6).map(item => `
-        <tr class="table-row-hover hover-lift-slight">
+    body.innerHTML = state.history.slice(0, 10).map(item => `
+        <tr class="table-row-hover">
             <td style="font-size: 1.2rem;">${item.icon || '💳'}</td>
-            <td><strong>${item.desc}</strong><br><small style="color: var(--text-muted)">${item.date}</small></td>
+            <td>
+                <strong>${item.desc}</strong><br>
+                <small style="color: var(--text-muted)">${item.date}</small>
+            </td>
             <td style="text-align:right; font-weight: 700; color: ${item.amount > 0 ? 'var(--success)' : 'var(--text-main)'}">
                 ${item.amount > 0 ? '+' : ''}₱${Math.abs(item.amount).toFixed(2)}
+            </td>
+            <td style="text-align:right;">
+                <button onclick="editTransaction('${item.id}')" class="icon-btn" style="padding: 4px 8px;"><i class="fas fa-pen"></i></button>
+                <button onclick="deleteTransaction('${item.id}')" class="icon-btn" style="color:var(--danger); padding: 4px 8px;"><i class="fas fa-trash"></i></button>
             </td>
         </tr>
     `).join('');
@@ -297,6 +304,45 @@ function exportData() {
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
 }
+
+function editTransaction(id) {
+    const index = state.history.findIndex(t => t.id == id);
+    if (index === -1) return;
+
+    const t = state.history[index];
+    const newDesc = prompt("Update Description:", t.desc);
+    const newAmount = prompt("Update Amount (use negative for expenses):", t.amount);
+
+    if (newDesc !== null && newAmount !== null && !isNaN(newAmount)) {
+        state.history[index].desc = newDesc;
+        state.history[index].amount = parseFloat(newAmount);
+        state.history[index].icon = detectCategory(newDesc);
+        
+        recalculateEverything(); // Vital: Refresh the whole system
+        save();
+    }
+}
+
+function deleteTransaction(id) {
+    if (confirm("Purge this data entry from the ledger?")) {
+        state.history = state.history.filter(t => t.id != id);
+        recalculateEverything();
+        save();
+    }
+}
+
+// This makes sure your "Liquid Assets" matches your history perfectly
+function recalculateEverything() {
+    state.balance = state.history.reduce((acc, t) => acc + t.amount, 0);
+    state.graphData = [0]; // Reset graph
+    // Rebuild graph from history
+    let tempBal = 0;
+    [...state.history].reverse().forEach(t => {
+        tempBal += t.amount;
+        state.graphData.push(tempBal);
+    });
+}
+
 
 document.getElementById('clear-data').addEventListener('click', () => {
     if (confirm("WARNING: Initiating total system purge. All data will be destroyed. Proceed?")) {
