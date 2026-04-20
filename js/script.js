@@ -162,7 +162,7 @@ function detectCategoryAndAnomaly(desc, amount) {
     return category;
 }
 
-// --- TRANSACTION ENTRY ---
+// --- TRANSACTION ENTRY v5.2 (MULTI-VECTOR SUPPORT) ---
 document.getElementById('transaction-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const amount = parseFloat(document.getElementById('amount').value);
@@ -174,21 +174,42 @@ document.getElementById('transaction-form').addEventListener('submit', (e) => {
     } else {
         const analysis = detectCategoryAndAnomaly(desc, amount);
         
-        // Auto-Vault Pull Check
-        if (state.goal.target > 0 && state.balance - amount < 0) {
+        // NEW: Choice of Vector
+        // Logic: If it's a "Want", suggest Vault. If it's a "Need", suggest Mission Balance.
+        let vector = "balance"; 
+        const suggestVault = analysis.type === 'want' || state.balance < amount;
+        
+        const choice = confirm(`Deduct ₱${amount.toFixed(2)} for ${desc}?\n\nOK = Use Mission Assets (₱${state.balance.toFixed(2)})\nCancel = Use Quantum Vault (₱${state.generalSavings.toFixed(2)})`);
+        
+        if (!choice) vector = "vault";
+
+        if (vector === "balance") {
+            // Auto-Vault Pull Check (Safety Net)
+            if (state.balance < amount) {
+                if (state.generalSavings >= amount) {
+                    alert("Mission Assets low. Emergency pull from Vault authorized.");
+                    state.generalSavings -= amount;
+                    state.balance += amount; 
+                } else {
+                    alert("SYSTEM FAILURE: Insufficient funds across all vectors.");
+                    return;
+                }
+            }
+            state.balance -= amount;
+        } else {
+            // Deduct from Vault
             if (state.generalSavings >= amount) {
-                alert(`CRITICAL: Mission Assets depleted. Auto-pulling ₱${amount.toFixed(2)} from Quantum Vault to cover expense.`);
                 state.generalSavings -= amount;
-                state.balance += amount; // Temporarily pad the balance
             } else {
-                alert("SYSTEM FAILURE: Insufficient funds across all vectors.");
+                alert("Vault Reserves Insufficient. Transaction aborted.");
+                return;
             }
         }
 
-        state.balance -= amount;
         state.history.unshift({
             id: Date.now(), date: new Date().toLocaleDateString(),
-            desc: desc, amount: -amount, icon: analysis.icon, spendType: analysis.type
+            desc: `${vector === "vault" ? '[VAULT] ' : ''}${desc}`, 
+            amount: -amount, icon: analysis.icon, spendType: analysis.type
         });
         state.graphData.push(state.balance);
     }
@@ -432,19 +453,29 @@ function confirmFuel(received) {
 
 function transferToMission() {
     const remaining = state.goal.target - state.balance;
-    let suggested = Math.min(state.generalSavings, remaining); // <--- ADD THIS
+    const maxPossible = state.generalSavings;
     
-    let amount = parseFloat(prompt(`Transfer from Quantum Vault (Current: ₱${state.generalSavings.toFixed(2)}) to Mission Assets:`, suggested)); // <--- CHANGE state.generalSavings TO suggested
-    if (amount > 0 && amount <= state.generalSavings) {
+    if (maxPossible <= 0) {
+        alert("Quantum Vault is empty. No mass available for transfer.");
+        return;
+    }
+
+    let defaultTransfer = Math.min(maxPossible, remaining);
+    if (defaultTransfer < 0) defaultTransfer = 0;
+
+    let amount = parseFloat(prompt(`VAULT EXTRACTION\nAvailable: ₱${maxPossible.toFixed(2)}\nNeeded for Mission: ₱${remaining.toFixed(2)}\n\nEnter amount to transfer:`, defaultTransfer.toFixed(2)));
+
+    if (amount > 0 && amount <= maxPossible) {
         state.generalSavings -= amount;
         state.balance += amount;
         state.history.unshift({
             id: Date.now(), date: new Date().toLocaleDateString(),
-            desc: "🔄 SYSTEM OVERRIDE: Vault to Mission", amount: amount, icon: '📦', spendType: 'income'
+            desc: "🔄 VAULT EXTRACTION: Manual Sync", amount: amount, icon: '📦', spendType: 'income'
         });
         save();
-    } else if (amount > state.generalSavings) {
-        alert("Insufficient Vault Reserves.");
+        alert(`₱${amount.toFixed(2)} successfully fused with Mission Assets.`);
+    } else if (amount > maxPossible) {
+        alert("Transfer exceeds Vault capacity.");
     }
 }
 
