@@ -113,6 +113,9 @@ function routeIncome(amount, sourceDesc) {
     state.graphData.push(state.balance);
     state.streak++;
     
+    // NEW: Suppress the auto-fuel panel if income is logged manually today
+    state.lastFuelDate = new Date().toLocaleDateString(); 
+    
     // ADD THESE TWO LINES AT THE END OF routeIncome:
     save(); // This ensures the data is written to localStorage
     updateUI(); // This refreshes the numbers on the screen immediately
@@ -125,23 +128,25 @@ function detectCategoryAndAnomaly(desc, amount) {
     const d = desc.toLowerCase();
     let category = { icon: '💳', type: 'misc', name: 'Misc' }; 
     
-    // Expanded NLP Lexicon
+    // 1. Update your categories object:
     const categories = {
-        '🍔': { regex: /\b(food|lunch|snack|burger|pizza|eat|meal|coffee|drink|water|grocery|mcdo|jollibee|kfc|rice|canteen)\b/, type: 'need' },
-        '🚙': { regex: /\b(fare|jeep|transpo|trike|gas|taxi|grab|bus|commute|ride|angkas|joyride|tricycle)\b/, type: 'need' },
-        '🎮': { regex: /\b(codm|roblox|game|steam|play|skin|valorant|topup|rp|vbucks|load|data|promo)\b/, type: 'want' },
-        '📚': { regex: /\b(school|print|project|book|tuition|supplies|pen|paper|copy|xerox|contribution)\b/, type: 'need' },
-        '👕': { regex: /\b(clothes|shirt|shoes|apparel|fit|pants|mall|thrifting|ukay|jacket|haircut)\b/, type: 'want' },
-        '🎬': { regex: /\b(movie|cinema|netflix|ticket|concert|sub|spotify|premium|date)\b/, type: 'want' },
-        '🚨': { regex: /\b(emergency|med|hospital|clinic|repair|fix)\b/, type: 'need' }
+        '🍔': { regex: /\b(food|lunch|snack|burger|pizza|eat|meal|coffee|drink|water|grocery|mcdo|jollibee|kfc|rice|canteen)\b/, type: 'need', name: 'Food & Dining' },
+        '🚙': { regex: /\b(fare|jeep|transpo|trike|gas|taxi|grab|bus|commute|ride|angkas|joyride|tricycle)\b/, type: 'need', name: 'Transport' },
+        '🎮': { regex: /\b(codm|roblox|game|steam|play|skin|valorant|topup|rp|vbucks|load|data|promo)\b/, type: 'want', name: 'Gaming/Digital' },
+        '📚': { regex: /\b(school|print|project|book|tuition|supplies|pen|paper|copy|xerox|contribution)\b/, type: 'need', name: 'Academic' },
+        '👕': { regex: /\b(clothes|shirt|shoes|apparel|fit|pants|mall|thrifting|ukay|jacket|haircut)\b/, type: 'want', name: 'Lifestyle' },
+        '🎬': { regex: /\b(movie|cinema|netflix|ticket|concert|sub|spotify|premium|date)\b/, type: 'want', name: 'Entertainment' },
+        '🚨': { regex: /\b(emergency|med|hospital|clinic|repair|fix)\b/, type: 'need', name: 'Emergency' }
     };
-
+    
+    // 2. Update the fallback logic below it:
     for (let [icon, data] of Object.entries(categories)) {
         if (data.regex.test(d)) {
-            category = { icon: icon, type: data.type, name: data.regex.source.split('|')[1] || 'Specific' };
+            category = { icon: icon, type: data.type, name: data.name }; // Fixed
             break;
         }
     }
+
 
     // 1. Update Historical Averages for this Category
     const catName = category.icon;
@@ -193,22 +198,30 @@ document.getElementById('transaction-form').addEventListener('submit', (e) => {
         msgEl.innerHTML = `Deduct <strong>₱${amount.toFixed(2)}</strong> for ${desc}?<br>
         <small style="color:var(--text-muted)">Anomaly Status: ${analysis.icon === '⚠️' ? 'HIGH VELOCITY' : 'STABLE'}</small>`;
         
-        // Ensure the modal actually shows up
+        // Match the logic in toggleSettings()
         modal.style.display = 'flex';
-        modal.classList.add('active'); 
+        // Small delay to ensure the display change is registered before adding the animation class
+        setTimeout(() => {
+            modal.classList.add('active');
+        }, 10);
     }
     e.target.reset();
 });
 
 function closeVectorModal() {
-    document.getElementById('vector-modal').style.display = 'none';
-    pendingTx = null;
+    const modal = document.getElementById('vector-modal');
+    modal.classList.remove('active'); // Added: Reset animation state
+    setTimeout(() => {
+        modal.style.display = 'none';
+        pendingTx = null;
+    }, 300); // Matches your CSS transition time for a smooth fade out
 }
 
 function executeVector(vector) {
     if (!pendingTx) return;
     const { amount, desc, analysis } = pendingTx;
 
+    // 1. Handle Deductions
     if (vector === "balance") {
         if (state.balance < amount) {
             if (state.generalSavings >= amount) {
@@ -222,7 +235,7 @@ function executeVector(vector) {
             }
         }
         state.balance -= amount;
-    } else {
+    } else if (vector === "vault") {
         if (state.generalSavings >= amount) {
             state.generalSavings -= amount;
         } else {
@@ -232,6 +245,7 @@ function executeVector(vector) {
         }
     }
 
+    // 2. Log to Ledger
     state.history.unshift({
         id: Date.now(), 
         date: new Date().toLocaleDateString(),
@@ -241,21 +255,16 @@ function executeVector(vector) {
         spendType: analysis.type
     });
     
-    // Update graph
-    state.graphData.push(state.balance); 
-    
-    // Close and Clean up
-    closeVectorModal();
-    
-    // CRITICAL: Save and refresh the UI
-    save(); 
-
+    // 3. Update Learning Metrics (Moving Average for that day)
     const todayNum = new Date().getDay();
     state.metrics.dayOfWeekBurn[todayNum] = ((state.metrics.dayOfWeekBurn[todayNum] || 0) + amount) / 2;
 
+    // 4. Update Visualization Data
     state.graphData.push(state.balance); 
+    
+    // 5. Finalize and Cleanup
     closeVectorModal();
-    save(); 
+    save(); // updateUI() is called inside save()
 }
 
 // --- V5 ADVANCED BURN RATE (WEIGHTED VELOCITY) ---
@@ -589,7 +598,6 @@ function redeemGoal() {
     state.goal = { name: "VOID", target: 0, date: null, buffer: 0 };
     state.graphData.push(state.balance);
     
-    checkAutoSweep();
     save();
     alert("System Overload: Mission Accomplished. Asset acquired.");
 }
