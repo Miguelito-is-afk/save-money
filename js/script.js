@@ -113,6 +113,10 @@ function routeIncome(amount, sourceDesc) {
     state.graphData.push(state.balance);
     state.streak++;
     
+    // ADD THESE TWO LINES AT THE END OF routeIncome:
+    save(); // This ensures the data is written to localStorage
+    updateUI(); // This refreshes the numbers on the screen immediately
+    
     alert(`Split Execution:\n🎯 Mission: ₱${amountForGoal.toFixed(2)}\n💎 Vault: ₱${surplusForVault.toFixed(2)}`);
 }
 
@@ -172,22 +176,26 @@ document.getElementById('transaction-form').addEventListener('submit', (e) => {
     const type = document.getElementById('type').value;
     const desc = document.getElementById('desc').value;
 
+    if (isNaN(amount) || amount <= 0) return; // Safety check
+
     if (type === 'income') {
         routeIncome(amount, desc);
     } else {
+        // We only ANALYZE here, we don't save to metrics yet 
+        // to prevent double-counting.
         const analysis = detectCategoryAndAnomaly(desc, amount);
         
-        // Save transaction context for the modal
         pendingTx = { amount, desc, analysis };
         
-        // Trigger the Custom UI Modal
         const modal = document.getElementById('vector-modal');
         const msgEl = document.getElementById('vector-message');
         
         msgEl.innerHTML = `Deduct <strong>₱${amount.toFixed(2)}</strong> for ${desc}?<br>
         <small style="color:var(--text-muted)">Anomaly Status: ${analysis.icon === '⚠️' ? 'HIGH VELOCITY' : 'STABLE'}</small>`;
         
+        // Ensure the modal actually shows up
         modal.style.display = 'flex';
+        modal.classList.add('active'); 
     }
     e.target.reset();
 });
@@ -232,6 +240,15 @@ function executeVector(vector) {
         icon: analysis.icon, 
         spendType: analysis.type
     });
+    
+    // Update graph
+    state.graphData.push(state.balance); 
+    
+    // Close and Clean up
+    closeVectorModal();
+    
+    // CRITICAL: Save and refresh the UI
+    save(); 
 
     // --- ENHANCED LEARNING: Categorical + Temporal ---
     const catName = analysis.icon;
