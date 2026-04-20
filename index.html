@@ -78,28 +78,39 @@
             </section>
 
             <section class="stats-grid">
-                <div class="stat-card animate-in fade-delay-2 hover-lift">
-                    <div class="card-header-flex">
-                        <span class="label">Liquid Assets</span>
-                        <button onclick="editStat('balance')" class="icon-btn"><i class="fas fa-pen"></i></button>
-                    </div>
-                    <h2 id="total-balance" class="counter-up">₱0.00</h2>
-                    <div class="stat-meta" id="streak-count">🔥 0 Day Pulse</div>
+            <div class="stat-card animate-in fade-delay-2 hover-lift">
+                <div class="card-header-flex">
+                    <span class="label">Mission Assets</span>
+                    <button onclick="editStat('balance')" class="icon-btn"><i class="fas fa-pen"></i></button>
                 </div>
-                <div class="stat-card animate-in fade-delay-3 hover-lift">
-                    <div class="card-header-flex">
-                        <span class="label">Weekly Fuel</span>
-                        <button onclick="editStat('income')" class="icon-btn"><i class="fas fa-pen"></i></button>
-                    </div>
-                    <h2 id="weekly-inc">₱0.00</h2>
-                    <div class="stat-meta">Income Stream</div>
+                <h2 id="total-balance" class="counter-up">₱0.00</h2>
+                <div class="stat-meta" id="streak-count">🔥 0 Day Pulse</div>
+            </div>
+        
+            <div class="stat-card animate-in fade-delay-3 hover-lift" style="border-color: var(--accent);">
+                <div class="card-header-flex">
+                    <span class="label">Quantum Vault</span>
+                    <i class="fas fa-vault" style="color: var(--accent);"></i>
                 </div>
-                <div class="stat-card animate-in fade-delay-4 hover-lift">
-                    <span class="label">Safety Buffer</span>
-                    <h2 id="buffer-display">0 Days</h2>
-                    <div class="stat-meta">Early Completion Target</div>
+                <h2 id="savings-vault">₱0.00</h2>
+                <div class="stat-meta">Surplus Reserves</div>
+            </div>
+        
+            <div class="stat-card animate-in fade-delay-4 hover-lift">
+                <div class="card-header-flex">
+                    <span class="label">Weekly Fuel</span>
+                    <button onclick="editStat('income')" class="icon-btn"><i class="fas fa-pen"></i></button>
                 </div>
-            </section>
+                <h2 id="weekly-inc">₱0.00</h2>
+                <div class="stat-meta">Income Stream</div>
+            </div>
+        
+            <div class="stat-card animate-in fade-delay-5 hover-lift">
+                <span class="label">Safety Buffer</span>
+                <h2 id="buffer-display">0 Days</h2>
+                <div class="stat-meta">Completion Target</div>
+            </div>
+        </section>
 
             <div class="split-layout">
                 <div class="flex-column">
