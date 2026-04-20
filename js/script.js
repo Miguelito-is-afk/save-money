@@ -524,6 +524,8 @@ function transferToMission() {
     if (defaultTransfer < 0) defaultTransfer = 0;
 
     let amount = parseFloat(prompt(`VAULT EXTRACTION\nAvailable: ₱${maxPossible.toFixed(2)}\nNeeded for Mission: ₱${remaining.toFixed(2)}\n\nEnter amount to transfer:`, defaultTransfer.toFixed(2)));
+    
+    if (isNaN(amount) || amount <= 0) return; // Added safety check
 
     if (amount > 0 && amount <= maxPossible) {
         state.generalSavings -= amount;
