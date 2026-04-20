@@ -530,9 +530,9 @@ td, th {
 
 /* 3. Ensure the card inside scales up properly */
 .modal-overlay.active .modal-card {
-    display: flex !important; /* Forces the box to exist */
-    opacity: 1 !important;    /* Makes it visible */
-    pointer-events: auto;     /* Allows you to click buttons */
+    opacity: 1 !important;
+    transform: scale(1); /* Add this for a 'pop' effect */
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* 4. Safety for the Vector selection buttons color */
