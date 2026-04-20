@@ -1,5 +1,7 @@
-// AETHER CORE v5.1 - The "HIM" Update (Hyper-Predictive Neural Engine)
+// AETHER CORE v5.3 - The "HIM" Update (Hyper-Predictive Neural Engine)
 // Hardware-Optimized for Dimensity processing | Engineered by Miguel Bernados
+
+let pendingTx = null; // Stores temporary transaction data for the modal
 
 let state = JSON.parse(localStorage.getItem('aetherCoreData')) || {
     balance: 0,
@@ -19,6 +21,9 @@ let state = JSON.parse(localStorage.getItem('aetherCoreData')) || {
         totalDaysTracked: 0
     }
 };
+
+// Add this single line below your legacy metrics check:
+if (state.graphData.length === 0) state.graphData.push(state.balance);
 
 // Ensure legacy users get the new metrics object
 if (!state.metrics) state.metrics = { categoryAverages: {}, dayOfWeekBurn: {0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0}, totalDaysTracked: 0 };
@@ -52,12 +57,16 @@ function checkAutoSweep() {
     }
 }
 
-// --- CORE NEURAL ROUTING (INCOME) ---
+// --- CORE NEURAL ROUTING (INCOME) v5.3 ---
 function routeIncome(amount, sourceDesc) {
-    let amountForGoal = 0; // Initialize to 0 (Safe Default)
+    let amountForGoal = 0;
     let surplusForVault = 0;
 
-    // Strict Mission Validation: Must have a target > 0 and a valid date
+    // 1. Mandatory Vault Tax (e.g., 20% always goes to savings first)
+    const vaultTaxRate = 0.20; 
+    const mandatoryVault = amount * vaultTaxRate;
+    let shareableAmount = amount - mandatoryVault;
+
     const isMissionActive = state.goal && state.goal.target > 0 && state.goal.date;
 
     if (isMissionActive) {
@@ -68,15 +77,16 @@ function routeIncome(amount, sourceDesc) {
         const remaining = state.goal.target - state.balance;
         const dailyReq = Math.max(0, remaining / daysLeft);
 
-        if (amount > dailyReq) {
+        // Route the shareable amount to the goal up to the daily requirement
+        if (shareableAmount > dailyReq) {
             amountForGoal = dailyReq;
-            surplusForVault = amount - dailyReq;
+            surplusForVault = (shareableAmount - dailyReq) + mandatoryVault;
         } else {
-            amountForGoal = amount;
-            surplusForVault = 0;
+            amountForGoal = shareableAmount;
+            surplusForVault = mandatoryVault;
         }
     } else {
-        // --- VOID MODE: 100% Wealth Building ---
+        // VOID MODE: 100% to Vault
         surplusForVault = amount;
         amountForGoal = 0;
     }
@@ -103,14 +113,7 @@ function routeIncome(amount, sourceDesc) {
     state.graphData.push(state.balance);
     state.streak++;
     
-    // UI Feedback logic
-    if (surplusForVault > 0 && amountForGoal > 0) {
-        alert(`Split Execution:\n₱${amountForGoal.toFixed(2)} -> Mission\n₱${surplusForVault.toFixed(2)} -> Vault`);
-    } else if (surplusForVault > 0) {
-        alert(`₱${surplusForVault.toFixed(2)} secured in Quantum Vault.`);
-    } else {
-        alert(`₱${amountForGoal.toFixed(2)} allocated to Mission.`);
-    }
+    alert(`Split Execution:\n🎯 Mission: ₱${amountForGoal.toFixed(2)}\n💎 Vault: ₱${surplusForVault.toFixed(2)}`);
 }
 
 // --- V5 DYNAMIC ANOMALY & NLP CATEGORIZATION ---
@@ -174,49 +177,77 @@ document.getElementById('transaction-form').addEventListener('submit', (e) => {
     } else {
         const analysis = detectCategoryAndAnomaly(desc, amount);
         
-        // NEW: Choice of Vector
-        // Logic: If it's a "Want", suggest Vault. If it's a "Need", suggest Mission Balance.
-        let vector = "balance"; 
-        const suggestVault = analysis.type === 'want' || state.balance < amount;
+        // Save transaction context for the modal
+        pendingTx = { amount, desc, analysis };
         
-        const choice = confirm(`Deduct ₱${amount.toFixed(2)} for ${desc}?\n\nOK = Use Mission Assets (₱${state.balance.toFixed(2)})\nCancel = Use Quantum Vault (₱${state.generalSavings.toFixed(2)})`);
+        // Trigger the Custom UI Modal
+        const modal = document.getElementById('vector-modal');
+        const msgEl = document.getElementById('vector-message');
         
-        if (!choice) vector = "vault";
+        msgEl.innerHTML = `Deduct <strong>₱${amount.toFixed(2)}</strong> for ${desc}?<br>
+        <small style="color:var(--text-muted)">Anomaly Status: ${analysis.icon === '⚠️' ? 'HIGH VELOCITY' : 'STABLE'}</small>`;
+        
+        modal.style.display = 'flex';
+    }
+    e.target.reset();
+});
 
-        if (vector === "balance") {
-            // Auto-Vault Pull Check (Safety Net)
-            if (state.balance < amount) {
-                if (state.generalSavings >= amount) {
-                    alert("Mission Assets low. Emergency pull from Vault authorized.");
-                    state.generalSavings -= amount;
-                    state.balance += amount; 
-                } else {
-                    alert("SYSTEM FAILURE: Insufficient funds across all vectors.");
-                    return;
-                }
-            }
-            state.balance -= amount;
-        } else {
-            // Deduct from Vault
+function closeVectorModal() {
+    document.getElementById('vector-modal').style.display = 'none';
+    pendingTx = null;
+}
+
+function executeVector(vector) {
+    if (!pendingTx) return;
+    const { amount, desc, analysis } = pendingTx;
+
+    if (vector === "balance") {
+        if (state.balance < amount) {
             if (state.generalSavings >= amount) {
+                alert("MISSION ASSETS DEPLETED. Emergency Vault Pull Initialized.");
                 state.generalSavings -= amount;
+                state.balance += amount; 
             } else {
-                alert("Vault Reserves Insufficient. Transaction aborted.");
+                alert("CRITICAL ERROR: Insufficient Reserves.");
+                closeVectorModal();
                 return;
             }
         }
-
-        state.history.unshift({
-            id: Date.now(), date: new Date().toLocaleDateString(),
-            desc: `${vector === "vault" ? '[VAULT] ' : ''}${desc}`, 
-            amount: -amount, icon: analysis.icon, spendType: analysis.type
-        });
-        state.graphData.push(state.balance);
+        state.balance -= amount;
+    } else {
+        if (state.generalSavings >= amount) {
+            state.generalSavings -= amount;
+        } else {
+            alert("VAULT RESERVES EMPTY.");
+            closeVectorModal();
+            return;
+        }
     }
-    
-    save();
-    e.target.reset();
-});
+
+    state.history.unshift({
+        id: Date.now(), 
+        date: new Date().toLocaleDateString(),
+        desc: `${vector === "vault" ? '[VAULT] ' : ''}${desc}`, 
+        amount: -amount, 
+        icon: analysis.icon, 
+        spendType: analysis.type
+    });
+
+    // --- ENHANCED LEARNING: Categorical + Temporal ---
+    const catName = analysis.icon;
+    if (state.metrics.categoryAverages[catName]) {
+        state.metrics.categoryAverages[catName].total += amount;
+        state.metrics.categoryAverages[catName].count += 1;
+        state.metrics.categoryAverages[catName].avg = state.metrics.categoryAverages[catName].total / state.metrics.categoryAverages[catName].count;
+    }
+
+    const todayNum = new Date().getDay();
+    state.metrics.dayOfWeekBurn[todayNum] = ((state.metrics.dayOfWeekBurn[todayNum] || 0) + amount) / 2;
+
+    state.graphData.push(state.balance); 
+    closeVectorModal();
+    save(); 
+}
 
 // --- V5 ADVANCED BURN RATE (WEIGHTED VELOCITY) ---
 function calculateBurnRate() {
@@ -432,23 +463,34 @@ function checkFuelPanel() {
 
 function confirmFuel(received) {
     const fuelPanel = document.getElementById('fuel-panel');
-    const todayDateString = new Date().toLocaleDateString();
-    const dailyReq = parseFloat(fuelPanel.getAttribute('data-pending')) || 0;
-
+    const msg = document.getElementById('fuel-message');
+    
     if (received) {
-        let defaultPrompt = state.income / (state.incomeSchedule.length || 1);
-        let promptMsg = state.goal.target > 0 ? `Neural Sync: Enter total amount received today (₱).\n(System needs ₱${dailyReq.toFixed(2)} for mission)` : `Neural Sync: Enter total amount received today (₱). Routing 100% to Vault.`;
-        
-        let totalInHand = parseFloat(prompt(promptMsg, defaultPrompt)) || 0;
-        
-        if (totalInHand > 0) {
-            routeIncome(totalInHand, "Daily Sync");
-        }
+        const defaultVal = state.income / (state.incomeSchedule.length || 1);
+        // Replace panel text with an inline input
+        msg.innerHTML = `
+            <div style="display:flex; align-items:center; gap:10px; margin-top:5px;">
+                <span>Confirm Intake: ₱</span>
+                <input type="number" id="sync-amount" value="${defaultVal}" 
+                       style="background:rgba(255,255,255,0.1); border:1px solid var(--primary); color:white; width:80px; padding:4px; border-radius:4px;">
+                <button onclick="finalizeSync()" class="btn-primary" style="padding: 4px 12px; font-size:0.8rem;">EXECUTE</button>
+            </div>
+        `;
+    } else {
+        state.lastFuelDate = new Date().toLocaleDateString();
+        fuelPanel.style.display = 'none';
+        save();
     }
+}
 
-    state.lastFuelDate = todayDateString;
-    fuelPanel.style.display = 'none'; 
-    save(); 
+function finalizeSync() {
+    const amount = parseFloat(document.getElementById('sync-amount').value) || 0;
+    if (amount > 0) {
+        routeIncome(amount, "Daily Sync");
+    }
+    state.lastFuelDate = new Date().toLocaleDateString();
+    document.getElementById('fuel-panel').style.display = 'none';
+    save();
 }
 
 function transferToMission() {
@@ -577,6 +619,12 @@ function save() {
 
 function updateUI() {
     checkAutoSweep();
+    
+    // 1. Calculations First
+    calculateBurnRate(); 
+    calculateAetherLogic();
+    
+    // 2. DOM Updates Second
     document.getElementById('total-balance').innerText = `₱${state.balance.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
     const vaultEl = document.getElementById('savings-vault');
     if (vaultEl) vaultEl.innerText = `₱${(state.generalSavings || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}`;
@@ -590,8 +638,6 @@ function updateUI() {
 
     renderLedger();
     checkFuelPanel();
-    calculateBurnRate(); 
-    calculateAetherLogic();
     if (chartInstance) updateChart();
 }
 
