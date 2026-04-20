@@ -482,18 +482,26 @@ function checkFuelPanel() {
 function confirmFuel(received) {
     const fuelPanel = document.getElementById('fuel-panel');
     const msg = document.getElementById('fuel-message');
-    
+
     if (received) {
-        const defaultVal = state.income / (state.incomeSchedule.length || 1);
-        // Replace panel text with an inline input
+        const pending = parseFloat(fuelPanel.getAttribute('data-pending')) || 0;
+        const defaultVal = pending > 0
+            ? pending
+            : state.income / Math.max(1, state.incomeSchedule.length);
+
         msg.innerHTML = `
-            <div style="display:flex; align-items:center; gap:10px; margin-top:5px;">
+            <div style="display:flex; align-items:center; gap:10px; margin-top:5px; flex-wrap:wrap;">
                 <span>Confirm Intake: ₱</span>
-                <input type="number" id="sync-amount" value="${defaultVal}" 
-                       style="background:rgba(255,255,255,0.1); border:1px solid var(--primary); color:white; width:80px; padding:4px; border-radius:4px;">
-                <button onclick="finalizeSync()" class="btn-primary" style="padding: 4px 12px; font-size:0.8rem;">EXECUTE</button>
+                <input type="number" id="sync-amount" value="${defaultVal.toFixed(2)}"
+                       min="1" step="0.01"
+                       style="background:rgba(255,255,255,0.1); border:1px solid var(--primary); color:white; width:100px; padding:4px; border-radius:4px;">
+                <button type="button" id="execute-sync-btn" class="btn-primary" style="padding:4px 12px; font-size:0.8rem;">EXECUTE</button>
             </div>
         `;
+
+        document.getElementById('execute-sync-btn')
+            .addEventListener('click', finalizeSync, { once: true });
+
     } else {
         state.lastFuelDate = new Date().toLocaleDateString();
         fuelPanel.style.display = 'none';
@@ -502,13 +510,18 @@ function confirmFuel(received) {
 }
 
 function finalizeSync() {
-    const amount = parseFloat(document.getElementById('sync-amount').value) || 0;
-    if (amount > 0) {
-        routeIncome(amount, "Daily Sync");
+    const input = document.getElementById('sync-amount');
+    const amount = input ? parseFloat(input.value) : NaN;
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+        alert("Please enter a valid amount.");
+        return;
     }
+
     state.lastFuelDate = new Date().toLocaleDateString();
     document.getElementById('fuel-panel').style.display = 'none';
-    save();
+
+    routeIncome(amount, "Daily Sync");
 }
 
 function transferToMission() {
