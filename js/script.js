@@ -1,9 +1,9 @@
-// AETHER CORE v4.2 - Quantum Neural Engine (Auto-Routing & Vault Edition)
+// AETHER CORE v5.0 - The "HIM" Update (Hyper-Predictive Neural Engine)
 // Hardware-Optimized for Dimensity processing | Engineered by Miguel Bernados
 
 let state = JSON.parse(localStorage.getItem('aetherCoreData')) || {
     balance: 0,
-    generalSavings: 0, // Quantum Vault
+    generalSavings: 0, 
     history: [],
     goal: { name: "VOID", target: 0, date: null, buffer: 0 },
     income: 200,
@@ -11,8 +11,17 @@ let state = JSON.parse(localStorage.getItem('aetherCoreData')) || {
     streak: 0,
     graphData: [0],
     lastFuelDate: null, 
-    settings: { darkMode: false, name: "MIGUEL | PSHS-CRC" }
+    settings: { darkMode: false, name: "MIGUEL | PSHS-CRC" },
+    // NEW: Deep Learning State Variables
+    metrics: {
+        categoryAverages: {}, 
+        dayOfWeekBurn: {0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0}, 
+        totalDaysTracked: 0
+    }
 };
+
+// Ensure legacy users get the new metrics object
+if (!state.metrics) state.metrics = { categoryAverages: {}, dayOfWeekBurn: {0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0}, totalDaysTracked: 0 };
 
 let chartInstance = null;
 
@@ -23,7 +32,386 @@ document.addEventListener('DOMContentLoaded', () => {
     updateUI();
 });
 
-// Handle clicking the day buttons
+// --- CORE NEURAL ROUTING (INCOME) ---
+function routeIncome(amount, sourceDesc) {
+    let amountForGoal = amount;
+    let surplusForVault = 0;
+
+    if (state.goal.target > 0) {
+        const targetDate = new Date(state.goal.date);
+        targetDate.setDate(targetDate.getDate() - state.goal.buffer);
+        const daysLeft = Math.max(1, Math.ceil((targetDate - new Date()) / (1000 * 60 * 60 * 24)));
+        const remaining = state.goal.target - state.balance;
+        const dailyReq = Math.max(0, remaining / daysLeft);
+
+        if (amount > dailyReq) {
+            amountForGoal = dailyReq;
+            surplusForVault = amount - dailyReq;
+        }
+    } else {
+        // If no goal, 100% goes to Vault (Wealth Building)
+        surplusForVault = amount;
+        amountForGoal = 0;
+    }
+
+    if (amountForGoal > 0) {
+        state.balance += amountForGoal;
+        state.history.unshift({
+            id: Date.now(), date: new Date().toLocaleDateString(),
+            desc: `🎯 MISSION ROUTE: ${sourceDesc}`, amount: amountForGoal,
+            icon: '⚡', spendType: 'income'
+        });
+    }
+
+    if (surplusForVault > 0) {
+        state.generalSavings += surplusForVault;
+        state.history.unshift({
+            id: Date.now() + 1, date: new Date().toLocaleDateString(),
+            desc: `🏦 VAULT SURPLUS: ${sourceDesc}`, amount: surplusForVault,
+            icon: '💎', spendType: 'income'
+        });
+    }
+
+    state.graphData.push(state.balance);
+    state.streak++;
+    
+    // UI Feedback
+    if (surplusForVault > 0 && amountForGoal > 0) {
+        alert(`Cash Split Protocol Executed:\n₱${amountForGoal.toFixed(2)} -> Mission Assets\n₱${surplusForVault.toFixed(2)} -> Quantum Vault`);
+    } else if (surplusForVault > 0) {
+        alert(`₱${surplusForVault.toFixed(2)} routed to Quantum Vault. Wealth mode active.`);
+    } else {
+        alert(`₱${amountForGoal.toFixed(2)} routed entirely to Mission Assets.`);
+    }
+}
+
+// --- V5 DYNAMIC ANOMALY & NLP CATEGORIZATION ---
+function detectCategoryAndAnomaly(desc, amount) {
+    const d = desc.toLowerCase();
+    let category = { icon: '💳', type: 'misc', name: 'Misc' }; 
+    
+    // Expanded NLP Lexicon
+    const categories = {
+        '🍔': { regex: /\b(food|lunch|snack|burger|pizza|eat|meal|coffee|drink|water|grocery|mcdo|jollibee|kfc|rice|canteen)\b/, type: 'need' },
+        '🚙': { regex: /\b(fare|jeep|transpo|trike|gas|taxi|grab|bus|commute|ride|angkas|joyride|tricycle)\b/, type: 'need' },
+        '🎮': { regex: /\b(codm|roblox|game|steam|play|skin|valorant|topup|rp|vbucks|load|data|promo)\b/, type: 'want' },
+        '📚': { regex: /\b(school|print|project|book|tuition|supplies|pen|paper|copy|xerox|contribution)\b/, type: 'need' },
+        '👕': { regex: /\b(clothes|shirt|shoes|apparel|fit|pants|mall|thrifting|ukay|jacket|haircut)\b/, type: 'want' },
+        '🎬': { regex: /\b(movie|cinema|netflix|ticket|concert|sub|spotify|premium|date)\b/, type: 'want' },
+        '🚨': { regex: /\b(emergency|med|hospital|clinic|repair|fix)\b/, type: 'need' }
+    };
+
+    for (let [icon, data] of Object.entries(categories)) {
+        if (data.regex.test(d)) {
+            category = { icon: icon, type: data.type, name: data.regex.source.split('|')[1] || 'Specific' };
+            break;
+        }
+    }
+
+    // 1. Update Historical Averages for this Category
+    const catName = category.icon;
+    if (!state.metrics.categoryAverages[catName]) {
+        state.metrics.categoryAverages[catName] = { total: 0, count: 0, avg: 0 };
+    }
+    
+    const catStats = state.metrics.categoryAverages[catName];
+    // Dynamic Anomaly Logic: If expense is > 1.8x the historical average for this specific category (minimum 3 data points)
+    const isAnomaly = (catStats.count >= 3 && amount > (catStats.avg * 1.8)) || (amount > state.income * 0.50);
+
+    if (isAnomaly) {
+        category.icon = '⚠️'; // Flag anomalous velocity
+    }
+
+    // Record data for future predictions
+    catStats.total += amount;
+    catStats.count += 1;
+    catStats.avg = catStats.total / catStats.count;
+
+    // 2. Update Day-of-Week Burn Stats
+    const todayNum = new Date().getDay();
+    state.metrics.dayOfWeekBurn[todayNum] = ((state.metrics.dayOfWeekBurn[todayNum] || 0) + amount) / 2; // Moving average for the day
+
+    return category;
+}
+
+// --- TRANSACTION ENTRY ---
+document.getElementById('transaction-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const amount = parseFloat(document.getElementById('amount').value);
+    const type = document.getElementById('type').value;
+    const desc = document.getElementById('desc').value;
+
+    if (type === 'income') {
+        routeIncome(amount, desc);
+    } else {
+        const analysis = detectCategoryAndAnomaly(desc, amount);
+        
+        // Auto-Vault Pull Check
+        if (state.goal.target > 0 && state.balance - amount < 0) {
+            if (state.generalSavings >= amount) {
+                alert(`CRITICAL: Mission Assets depleted. Auto-pulling ₱${amount.toFixed(2)} from Quantum Vault to cover expense.`);
+                state.generalSavings -= amount;
+                state.balance += amount; // Temporarily pad the balance
+            } else {
+                alert("SYSTEM FAILURE: Insufficient funds across all vectors.");
+            }
+        }
+
+        state.balance -= amount;
+        state.history.unshift({
+            id: Date.now(), date: new Date().toLocaleDateString(),
+            desc: desc, amount: -amount, icon: analysis.icon, spendType: analysis.type
+        });
+        state.graphData.push(state.balance);
+    }
+    
+    save();
+    e.target.reset();
+});
+
+// --- V5 ADVANCED BURN RATE (WEIGHTED VELOCITY) ---
+function calculateBurnRate() {
+    const now = Date.now();
+    const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
+    
+    const recentExpenses = state.history.filter(t => t.amount < 0 && t.id > thirtyDaysAgo);
+    const ultraRecent = state.history.filter(t => t.amount < 0 && t.id > sevenDaysAgo);
+    
+    const burnText = document.getElementById('burn-rate-display');
+    
+    if (recentExpenses.length > 1) {
+        // Calculate 30-day base burn
+        const totalBurn30 = recentExpenses.reduce((sum, t) => sum + Math.abs(t.amount), 0);
+        const oldest30 = Math.min(...recentExpenses.map(t => t.id));
+        const daysSpan30 = Math.max(1, (now - oldest30) / (1000 * 60 * 60 * 24));
+        const baseBurn = totalBurn30 / daysSpan30;
+
+        // Calculate 7-day high-velocity burn
+        const totalBurn7 = ultraRecent.reduce((sum, t) => sum + Math.abs(t.amount), 0);
+        const oldest7 = ultraRecent.length > 0 ? Math.min(...ultraRecent.map(t => t.id)) : now;
+        const daysSpan7 = Math.max(1, (now - oldest7) / (1000 * 60 * 60 * 24));
+        const velocityBurn = ultraRecent.length > 0 ? (totalBurn7 / daysSpan7) : baseBurn;
+
+        // Blended metric: 60% recent velocity, 40% historical base
+        state.trueDailyBurn = (velocityBurn * 0.6) + (baseBurn * 0.4); 
+
+        // Analyze trend
+        const trendIcon = velocityBurn > baseBurn ? '<i class="fas fa-arrow-trend-up" style="color:var(--danger)"></i>' : '<i class="fas fa-arrow-trend-down" style="color:var(--success)"></i>';
+
+        burnText.innerHTML = `${trendIcon} Kinetic Burn: ₱${state.trueDailyBurn.toFixed(2)} / day`;
+        burnText.style.color = state.trueDailyBurn > (state.income / 7) ? '#fca5a5' : '#86efac';
+    } else {
+        state.trueDailyBurn = 0;
+        burnText.innerText = "System calibrating neural weights...";
+        burnText.style.color = "var(--text-muted)";
+    }
+}
+
+// --- V5 AETHER LOGIC (CONTEXT-AWARE ADVISORY) ---
+function calculateAetherLogic() {
+    const healthEl = document.getElementById('health-score');
+    const adviceEl = document.getElementById('smart-advice');
+    const actionZone = document.getElementById('action-zone');
+    actionZone.innerHTML = ""; 
+
+    const todayDateString = new Date().toLocaleDateString();
+    const alreadyConfirmed = state.lastFuelDate === todayDateString;
+    const todayNum = new Date().getDay(); 
+    const isPayday = state.incomeSchedule.includes(todayNum);
+    
+    const numPaydays = state.incomeSchedule.length || 1;
+    const amountPerPayday = state.income / numPaydays;
+    const dailyIncome = isPayday ? amountPerPayday : 0;
+    
+    if (state.goal.target > 0) {
+        document.getElementById('goal-name-display').innerText = state.goal.name;
+        const progress = Math.min((state.balance / state.goal.target) * 100, 100);
+        document.getElementById('goal-progress-bar').style.width = `${progress}%`;
+        document.getElementById('progress-percent').innerText = `${Math.round(progress)}%`;
+        
+        const targetDate = new Date(state.goal.date);
+        targetDate.setDate(targetDate.getDate() - state.goal.buffer);
+        const daysLeft = Math.max(1, Math.ceil((targetDate - new Date()) / (1000 * 60 * 60 * 24)));
+        const remaining = state.goal.target - state.balance;
+        const dailyReq = remaining / daysLeft;
+
+        document.getElementById('goal-stats').innerText = remaining > 0 ? `₱${remaining.toLocaleString()} remaining` : "Quota Met";
+
+        // V5 DEEP INSIGHTS
+        if (remaining <= 0) {
+            healthEl.innerText = "MAX RESONANCE";
+            healthEl.style.color = "var(--success)";
+            adviceEl.innerText = `Objective '${state.goal.name}' secured. Awaiting manual extraction.`;
+            actionZone.innerHTML = `<button onclick="redeemGoal()" class="claim-btn">REDEEM ASSET</button>`;
+        } 
+        else if (state.generalSavings >= remaining) {
+            // New Override: Vault can instantly buy the goal
+            healthEl.innerText = "VAULT OVERRIDE AVAILABLE";
+            healthEl.style.color = "#a855f7"; // Purple glow
+            adviceEl.innerHTML = `Your Vault reserves (₱${state.generalSavings.toFixed(2)}) exceed the remaining mission deficit (₱${remaining.toFixed(2)}). You can bypass the timeline and execute acquisition immediately.`;
+            actionZone.innerHTML = `<button onclick="transferToMission()" class="btn-primary hover-glow" style="width:100%; margin-top:10px;">AUTHORIZE VAULT TRANSFER</button>`;
+            generatePredictions(dailyReq, 0, state.trueDailyBurn);
+        }
+        else if (alreadyConfirmed) {
+            healthEl.innerText = "SYNCED";
+            healthEl.style.color = "var(--success)";
+            adviceEl.innerHTML = `Neural pathways optimal. Today's required mass has been processed.<br><small style="color:var(--text-muted)">Projecting tomorrow's vector...</small>`;
+            generatePredictions(dailyReq, 0, state.trueDailyBurn); 
+        }
+        else if (!isPayday) {
+            healthEl.innerText = "DRIFTING";
+            healthEl.style.color = "var(--warning)";
+            adviceEl.innerHTML = `Non-income cycle. System is relying on existing mass. Maintain a burn rate below ₱${(state.balance/daysLeft).toFixed(2)} to prevent structural collapse.`;
+            generatePredictions(dailyReq, 0, state.trueDailyBurn); 
+        } 
+        else {
+            const projectedBurn = state.trueDailyBurn || (dailyIncome * 0.2);
+            const surplus = dailyIncome - projectedBurn - dailyReq;
+
+            if (dailyReq > dailyIncome) {
+                healthEl.innerText = "CRITICAL DEFICIT";
+                healthEl.style.color = "var(--danger)";
+                adviceEl.innerHTML = `Mathematical impossibility detected. Mission requires <strong>₱${dailyReq.toFixed(2)}/day</strong>, but intake is capped at <strong>₱${dailyIncome.toFixed(2)}</strong>. Restructure timeline.`;
+            } else if (surplus < 0) {
+                healthEl.innerText = "UNSTABLE";
+                healthEl.style.color = "var(--warning)";
+                adviceEl.innerHTML = `High probability of failure. After mission allocation, your remaining fuel (₱${(dailyIncome - dailyReq).toFixed(2)}) is lower than your kinetic burn (₱${projectedBurn.toFixed(2)}).`;
+            } else {
+                healthEl.innerText = "OPTIMAL";
+                healthEl.style.color = "var(--primary)";
+                adviceEl.innerHTML = `Trajectories aligned. Process the sync to secure <strong>₱${dailyReq.toFixed(2)}</strong> for the mission. The remaining <strong>₱${surplus.toFixed(2)}</strong> will be routed to the Vault.`;
+            }
+            generatePredictions(dailyReq, surplus, projectedBurn);
+        }
+    } else {
+        healthEl.innerText = "ACCUMULATING";
+        healthEl.style.color = "var(--success)";
+        adviceEl.innerHTML = `No mission vectors detected. 100% of incoming mass is being routed to the Quantum Vault.`;
+        document.getElementById('goal-name-display').innerText = "VOID";
+        generatePredictions(0, dailyIncome, state.trueDailyBurn || 0);
+    }
+}
+
+// --- V5 HYPER-PREDICTIVE MODEL ---
+function generatePredictions(dailyTarget, dailySurplus, baseBurn) {
+    const predBody = document.getElementById('prediction-body');
+    const tableHead = document.querySelector('.prediction-table thead tr');
+    if (tableHead) {
+        tableHead.innerHTML = `<th>Timeline</th><th>Projected Balance</th><th>Vault Reserves</th>`;
+    }
+
+    let rows = "";
+    let tempBalance = state.balance;
+    let tempSavings = state.generalSavings || 0; 
+    
+    const numPaydays = state.incomeSchedule.length || 1;
+    const amountPerPayday = state.income / numPaydays;
+    
+    for (let i = 1; i <= 7; i++) {
+        let date = new Date();
+        date.setDate(date.getDate() + i);
+        const dayOfWeek = date.getDay(); 
+        
+        // V5: Use day-specific learned burn rate if available, otherwise fallback to base burn
+        const learnedBurn = state.metrics.dayOfWeekBurn[dayOfWeek] || 0;
+        const projectedBurnForDay = learnedBurn > 0 ? learnedBurn : baseBurn;
+        
+        if (state.incomeSchedule.includes(dayOfWeek)) {
+            tempBalance += amountPerPayday;
+            tempBalance -= projectedBurnForDay;
+            
+            // Re-simulate routing logic
+            if (state.goal.target > 0) {
+                if (amountPerPayday > dailyTarget) {
+                    tempBalance -= (amountPerPayday - dailyTarget); // Remove surplus from balance...
+                    tempSavings += (amountPerPayday - dailyTarget); // ...and add to vault
+                }
+            } else {
+                 tempBalance -= amountPerPayday; 
+                 tempSavings += amountPerPayday;
+            }
+        } else {
+            // Non-payday: just apply burn
+            tempBalance -= projectedBurnForDay;
+        }
+        
+        const balanceColor = tempBalance < 0 ? "var(--danger)" : "var(--text-main)";
+
+        rows += `
+            <tr class="table-row-hover hover-lift-slight">
+                <td>${date.toLocaleDateString('en-US', {weekday: 'short', month: 'short', day: 'numeric'})} <small style="color:var(--text-muted); font-size:0.7em;">[-₱${projectedBurnForDay.toFixed(0)}]</small></td>
+                <td style="color: ${balanceColor};">₱${tempBalance.toFixed(2)}</td>
+                <td style="color: var(--primary); font-weight: bold;">₱${tempSavings.toFixed(2)}</td>
+            </tr>`;
+    }
+    
+    predBody.innerHTML = rows;
+}
+
+// STANDARD UTILS & UI CONTROLS
+function checkFuelPanel() {
+    const fuelPanel = document.getElementById('fuel-panel');
+    const today = new Date().getDay();
+    const todayDateString = new Date().toLocaleDateString();
+    const isPayday = state.incomeSchedule.includes(today);
+    const alreadyConfirmed = state.lastFuelDate === todayDateString;
+
+    if (isPayday && !alreadyConfirmed) {
+        if(state.goal.target > 0) {
+            const targetDate = new Date(state.goal.date);
+            targetDate.setDate(targetDate.getDate() - state.goal.buffer);
+            const daysLeft = Math.max(1, Math.ceil((targetDate - new Date()) / (1000 * 60 * 60 * 24)));
+            const remaining = state.goal.target - state.balance;
+            const dailyReq = Math.max(0, remaining / daysLeft);
+            document.getElementById('fuel-message').innerText = `Mission Sync: ${state.goal.name}. Confirm today's quota of ₱${dailyReq.toFixed(2)}?`;
+            fuelPanel.setAttribute('data-pending', dailyReq); 
+        } else {
+             document.getElementById('fuel-message').innerText = `Wealth Sync: No active mission. Route full intake to Quantum Vault?`;
+             fuelPanel.setAttribute('data-pending', 0); 
+        }
+        fuelPanel.style.display = 'block';
+    } else {
+        fuelPanel.style.display = 'none';
+    }
+}
+
+function confirmFuel(received) {
+    const fuelPanel = document.getElementById('fuel-panel');
+    const todayDateString = new Date().toLocaleDateString();
+    const dailyReq = parseFloat(fuelPanel.getAttribute('data-pending')) || 0;
+
+    if (received) {
+        let defaultPrompt = state.income / (state.incomeSchedule.length || 1);
+        let promptMsg = state.goal.target > 0 ? `Neural Sync: Enter total amount received today (₱).\n(System needs ₱${dailyReq.toFixed(2)} for mission)` : `Neural Sync: Enter total amount received today (₱). Routing 100% to Vault.`;
+        
+        let totalInHand = parseFloat(prompt(promptMsg, defaultPrompt)) || 0;
+        
+        if (totalInHand > 0) {
+            routeIncome(totalInHand, "Daily Sync");
+        }
+    }
+
+    state.lastFuelDate = todayDateString;
+    fuelPanel.style.display = 'none'; 
+    save(); 
+}
+
+function transferToMission() {
+    let amount = parseFloat(prompt(`Transfer from Quantum Vault (Current: ₱${state.generalSavings.toFixed(2)}) to Mission Assets:`, state.generalSavings));
+    if (amount > 0 && amount <= state.generalSavings) {
+        state.generalSavings -= amount;
+        state.balance += amount;
+        state.history.unshift({
+            id: Date.now(), date: new Date().toLocaleDateString(),
+            desc: "🔄 SYSTEM OVERRIDE: Vault to Mission", amount: amount, icon: '📦', spendType: 'income'
+        });
+        save();
+    } else if (amount > state.generalSavings) {
+        alert("Insufficient Vault Reserves.");
+    }
+}
+
 document.querySelectorAll('.day-btn').forEach(btn => {
     btn.addEventListener('click', () => {
         const day = parseInt(btn.dataset.day);
@@ -38,153 +426,6 @@ document.querySelectorAll('.day-btn').forEach(btn => {
     });
 });
 
-function checkFuelPanel() {
-    const fuelPanel = document.getElementById('fuel-panel');
-    const today = new Date().getDay();
-    const todayDateString = new Date().toLocaleDateString();
-    
-    const isPayday = state.incomeSchedule.includes(today);
-    const alreadyConfirmed = state.lastFuelDate === todayDateString;
-
-    if (isPayday && !alreadyConfirmed && state.goal.target > 0) {
-        const targetDate = new Date(state.goal.date);
-        targetDate.setDate(targetDate.getDate() - state.goal.buffer);
-        const daysLeft = Math.max(1, Math.ceil((targetDate - new Date()) / (1000 * 60 * 60 * 24)));
-        const remaining = state.goal.target - state.balance;
-        
-        const dailyReq = Math.max(0, remaining / daysLeft);
-        
-        document.getElementById('fuel-message').innerText = `Mission Sync: ${state.goal.name}. Confirm today's quota of ₱${dailyReq.toFixed(2)}?`;
-        
-        fuelPanel.setAttribute('data-pending', dailyReq); 
-        fuelPanel.style.display = 'block';
-    } else {
-        fuelPanel.style.display = 'none';
-    }
-}
-
-// V4.2 SMART SPLIT LOGIC (For Daily Prompt)
-function confirmFuel(received) {
-    const fuelPanel = document.getElementById('fuel-panel');
-    const todayDateString = new Date().toLocaleDateString();
-    const dailyReq = parseFloat(fuelPanel.getAttribute('data-pending')) || 0;
-
-    if (received) {
-        // Ask for the total cash received to calculate the surplus
-        let totalInHand = parseFloat(prompt(`Neural Sync: Enter total amount received today (₱).\n(System needs ₱${dailyReq.toFixed(2)} for mission)`, state.income / state.incomeSchedule.length)) || 0;
-        
-        if (totalInHand > 0) {
-            routeIncome(totalInHand, "Daily Sync");
-        }
-    }
-
-    state.lastFuelDate = todayDateString;
-    fuelPanel.style.display = 'none'; 
-    save(); 
-}
-
-// --- CORE ROUTING ENGINE ---
-// Splits any incoming cash automatically into Mission vs Vault
-function routeIncome(amount, sourceDesc) {
-    let amountForGoal = amount;
-    let surplusForVault = 0;
-
-    // If there is an active goal, calculate what is needed today
-    if (state.goal.target > 0) {
-        const targetDate = new Date(state.goal.date);
-        targetDate.setDate(targetDate.getDate() - state.goal.buffer);
-        const daysLeft = Math.max(1, Math.ceil((targetDate - new Date()) / (1000 * 60 * 60 * 24)));
-        const remaining = state.goal.target - state.balance;
-        const dailyReq = Math.max(0, remaining / daysLeft);
-
-        // If the amount received is MORE than needed, split the rest into the vault
-        if (amount > dailyReq) {
-            amountForGoal = dailyReq;
-            surplusForVault = amount - dailyReq;
-        }
-    }
-
-    // Apply the split
-    state.balance += amountForGoal;
-    state.history.unshift({
-        id: Date.now(),
-        date: new Date().toLocaleDateString(),
-        desc: `🎯 MISSION ROUTE: ${sourceDesc}`,
-        amount: amountForGoal,
-        icon: '⚡',
-        spendType: 'income'
-    });
-
-    if (surplusForVault > 0) {
-        state.generalSavings += surplusForVault;
-        state.history.unshift({
-            id: Date.now() + 1,
-            date: new Date().toLocaleDateString(),
-            desc: `🏦 VAULT SURPLUS: ${sourceDesc}`,
-            amount: surplusForVault,
-            icon: '💎',
-            spendType: 'income'
-        });
-    }
-
-    state.graphData.push(state.balance);
-    state.streak++;
-    
-    if (surplusForVault > 0) {
-        alert(`Cash Split Protocol:\n₱${amountForGoal.toFixed(2)} -> Mission Assets\n₱${surplusForVault.toFixed(2)} -> Quantum Vault`);
-    } else {
-        alert(`₱${amountForGoal.toFixed(2)} routed entirely to Mission Assets.`);
-    }
-}
-
-// VAULT TRANSFER (In case of emergencies)
-function transferToMission() {
-    let amount = parseFloat(prompt(`Transfer from Quantum Vault (Current: ₱${state.generalSavings.toFixed(2)}) to Mission Assets:`, "10"));
-    if (amount > 0 && amount <= state.generalSavings) {
-        state.generalSavings -= amount;
-        state.balance += amount;
-        state.history.unshift({
-            id: Date.now(),
-            date: new Date().toLocaleDateString(),
-            desc: "🔄 SYSTEM OVERRIDE: Vault to Mission",
-            amount: amount,
-            icon: '📦',
-            spendType: 'income'
-        });
-        save();
-    } else if (amount > state.generalSavings) {
-        alert("Insufficient Vault Reserves.");
-    }
-}
-
-// V4 CATEGORIZATION & ANOMALY ENGINE
-function detectCategoryAndAnomaly(desc, amount) {
-    const d = desc.toLowerCase();
-    let category = { icon: '💳', type: 'anomaly', name: 'Misc' }; 
-    
-    const categories = {
-        '🍔': { regex: /\b(food|lunch|snack|burger|pizza|eat|meal|coffee|drink|water|grocery|groceries|mcdo|jollibee)\b/, type: 'need' },
-        '🚙': { regex: /\b(fare|jeep|transpo|trike|gas|taxi|grab|bus|commute|ride|angkas|joyride)\b/, type: 'need' },
-        '🎮': { regex: /\b(codm|roblox|game|cp|steam|play|skin|valorant|topup|rp|vbucks)\b/, type: 'want' },
-        '📚': { regex: /\b(school|print|project|book|tuition|supplies|pen|paper|copy|xerox)\b/, type: 'need' },
-        '👕': { regex: /\b(clothes|shirt|shoes|apparel|fit|pants|mall|thrifting|ukay|jacket)\b/, type: 'want' },
-        '🎬': { regex: /\b(movie|cinema|netflix|ticket|concert|sub|spotify|premium)\b/, type: 'want' }
-    };
-
-    for (let [icon, data] of Object.entries(categories)) {
-        if (data.regex.test(d)) {
-            category = { icon: icon, type: data.type, name: d };
-            break;
-        }
-    }
-
-    const isAnomaly = Math.abs(amount) > (state.income * 0.50);
-    if (isAnomaly) category.icon = '⚠️'; 
-
-    return category;
-}
-
-// UI LOGIC
 function toggleSettings() {
     const modal = document.getElementById('settings-modal');
     if (modal.classList.contains('active')) {
@@ -194,17 +435,10 @@ function toggleSettings() {
         modal.style.display = 'flex';
         void modal.offsetWidth;
         modal.classList.add('active');
-
         document.getElementById('settings-name').value = state.settings.name;
         document.getElementById('dark-mode-toggle').checked = state.settings.darkMode;
-
         document.querySelectorAll('.day-btn').forEach(btn => {
-            const day = parseInt(btn.dataset.day);
-            if (state.incomeSchedule.includes(day)) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
+            btn.classList.toggle('active', state.incomeSchedule.includes(parseInt(btn.dataset.day)));
         });
     }
 }
@@ -227,56 +461,18 @@ function applySettings() {
     }
 }
 
-// REDEMPTION PROTOCOL
 function redeemGoal() {
     const cost = state.goal.target;
     state.balance -= cost;
-    
     state.history.unshift({
-        id: Date.now(),
-        date: new Date().toLocaleDateString(),
-        desc: `🏆 SECURED: ${state.goal.name}`,
-        amount: -cost,
-        icon: '🎯',
-        spendType: 'goal'
+        id: Date.now(), date: new Date().toLocaleDateString(),
+        desc: `🏆 SECURED: ${state.goal.name}`, amount: -cost, icon: '🎯', spendType: 'goal'
     });
-
     state.goal = { name: "VOID", target: 0, date: null, buffer: 0 };
     state.graphData.push(state.balance);
-    
     save();
     alert("System Overload: Mission Accomplished. Asset acquired.");
 }
-
-// --- UPGRADED TRANSACTION ENTRY (AUTO-ROUTES INCOME) ---
-document.getElementById('transaction-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const amount = parseFloat(document.getElementById('amount').value);
-    const type = document.getElementById('type').value;
-    const desc = document.getElementById('desc').value;
-
-    if (type === 'income') {
-        // Use the smart routing engine!
-        routeIncome(amount, desc);
-    } else {
-        // Handle standard expenses
-        const analysis = detectCategoryAndAnomaly(desc, amount);
-        state.balance -= amount;
-        
-        state.history.unshift({
-            id: Date.now(),
-            date: new Date().toLocaleDateString(),
-            desc: desc,
-            amount: -amount,
-            icon: analysis.icon,
-            spendType: analysis.type
-        });
-        state.graphData.push(state.balance);
-    }
-    
-    save();
-    e.target.reset();
-});
 
 document.getElementById('goal-form').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -302,42 +498,14 @@ function save() {
     updateUI();
 }
 
-function calculateBurnRate() {
-    const now = Date.now();
-    const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
-    const recentExpenses = state.history.filter(t => t.amount < 0 && t.id > thirtyDaysAgo);
-    const burnText = document.getElementById('burn-rate-display');
-    
-    if (recentExpenses.length > 1) {
-        const totalBurn = recentExpenses.reduce((sum, t) => sum + Math.abs(t.amount), 0);
-        const oldestExpense = Math.min(...recentExpenses.map(t => t.id));
-        const daysSpan = Math.max(1, (now - oldestExpense) / (1000 * 60 * 60 * 24));
-        
-        state.trueDailyBurn = totalBurn / daysSpan; 
-
-        burnText.innerHTML = `<i class="fas fa-fire"></i> True Burn: ₱${state.trueDailyBurn.toFixed(2)} / day`;
-        burnText.style.color = state.trueDailyBurn > (state.income / 7) ? '#fca5a5' : '#86efac';
-    } else {
-        state.trueDailyBurn = 0;
-        burnText.innerText = "Data insufficient for velocity mapping.";
-        burnText.style.color = "var(--text-muted)";
-    }
-}
-
 function updateUI() {
     document.getElementById('total-balance').innerText = `₱${state.balance.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-    
-    // UPDATE VAULT DISPLAY
     const vaultEl = document.getElementById('savings-vault');
-    if (vaultEl) {
-        vaultEl.innerText = `₱${(state.generalSavings || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-    }
-
+    if (vaultEl) vaultEl.innerText = `₱${(state.generalSavings || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}`;
     document.getElementById('weekly-inc').innerText = `₱${state.income.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
     document.getElementById('buffer-display').innerText = `${state.goal.buffer} Days`;
     document.getElementById('streak-count').innerText = `🔥 ${state.streak} Day Pulse`;
     
-    // Calculate total wealth for Aura level
     const totalWealth = state.balance + (state.generalSavings || 0);
     const level = Math.max(1, Math.floor(totalWealth / 500) + 1);
     document.getElementById('aura-level').innerText = `LVL ${level}`;
@@ -347,122 +515,6 @@ function updateUI() {
     calculateBurnRate(); 
     calculateAetherLogic();
     if (chartInstance) updateChart();
-}
-
-function calculateAetherLogic() {
-    const healthEl = document.getElementById('health-score');
-    const adviceEl = document.getElementById('smart-advice');
-    const actionZone = document.getElementById('action-zone');
-    actionZone.innerHTML = ""; 
-
-    const todayDateString = new Date().toLocaleDateString();
-    const alreadyConfirmed = state.lastFuelDate === todayDateString;
-    const today = new Date().getDay(); 
-    const isPayday = state.incomeSchedule.includes(today);
-    
-    const numPaydays = state.incomeSchedule.length || 1;
-    const amountPerPayday = state.income / numPaydays;
-    const dailyIncome = isPayday ? amountPerPayday : 0;
-    
-    if (state.goal.target > 0) {
-        document.getElementById('goal-name-display').innerText = state.goal.name;
-        const progress = Math.min((state.balance / state.goal.target) * 100, 100);
-        document.getElementById('goal-progress-bar').style.width = `${progress}%`;
-        document.getElementById('progress-percent').innerText = `${Math.round(progress)}%`;
-        
-        const targetDate = new Date(state.goal.date);
-        targetDate.setDate(targetDate.getDate() - state.goal.buffer);
-        const daysLeft = Math.max(1, Math.ceil((targetDate - new Date()) / (1000 * 60 * 60 * 24)));
-        const remaining = state.goal.target - state.balance;
-        const dailyReq = remaining / daysLeft;
-
-        document.getElementById('goal-stats').innerText = remaining > 0 ? `₱${remaining.toLocaleString()} remaining` : "Quota Met";
-
-        if (remaining <= 0) {
-            healthEl.innerText = "MAX RESONANCE";
-            healthEl.style.color = "var(--success)";
-            adviceEl.innerText = `Objective achieved. ${state.goal.name} is ready for acquisition.`;
-            actionZone.innerHTML = `<button onclick="redeemGoal()" class="claim-btn">REDEEM ASSET</button>`;
-        } 
-        else if (alreadyConfirmed) {
-            healthEl.innerText = "QUOTA MET";
-            healthEl.style.color = "var(--success)";
-            const tomorrowReq = remaining / Math.max(1, daysLeft - 1);
-            adviceEl.innerHTML = `✅ <strong>Daily Sync Complete.</strong><br>Estimated tomorrow's quota: ₱${tomorrowReq.toFixed(2)}`;
-            generatePredictions(dailyReq, 0, 0); 
-        }
-        else if (!isPayday) {
-            healthEl.innerText = "NEURAL STANDBY";
-            healthEl.style.color = "var(--text-muted)";
-            adviceEl.innerHTML = `Today is a <strong>Non-Payday</strong>. No income expected.<br>Current daily drain required for goal: ₱${dailyReq.toFixed(2)}. Stay frosty.`;
-            generatePredictions(dailyReq, 0, 0); 
-        } 
-        else {
-            const projectedBurn = (state.trueDailyBurn && state.trueDailyBurn > 0) ? state.trueDailyBurn : (dailyIncome * 0.2);
-            const surplus = dailyIncome - projectedBurn - dailyReq;
-
-            if (dailyReq > dailyIncome) {
-                healthEl.innerText = "CRITICAL DEFICIT";
-                healthEl.style.color = "var(--danger)";
-                adviceEl.innerHTML = `Goal requires <strong>₱${dailyReq.toFixed(2)}/day</strong>, but you only make <strong>₱${dailyIncome.toFixed(2)}</strong>. Extend deadline!`;
-            } else if (surplus < 0) {
-                healthEl.innerText = "UNSTABLE";
-                healthEl.style.color = "var(--warning)";
-                adviceEl.innerHTML = `Goal takes ₱${dailyReq.toFixed(2)}. You only have ₱${(dailyIncome - dailyReq).toFixed(2)} left for food/fares. Tighten the belt!`;
-            } else {
-                healthEl.innerText = "OPTIMAL";
-                healthEl.style.color = "var(--primary)";
-                adviceEl.innerHTML = `🎯 Save Today: <strong>₱${dailyReq.toFixed(2)}</strong><br>🔥 Snack Budget: <strong>₱${(dailyIncome - dailyReq).toFixed(2)}</strong><br>🏦 <strong>Weekly Surplus: ₱${(surplus * numPaydays).toFixed(2)}</strong>`;
-            }
-            generatePredictions(dailyReq, surplus, projectedBurn);
-        }
-    } else {
-        healthEl.innerText = "ACCUMULATING";
-        healthEl.style.color = "var(--success)";
-        adviceEl.innerHTML = `No active mission. Wealth-Building Mode Active.`;
-        generatePredictions(0, dailyIncome, 0);
-    }
-}
-
-function generatePredictions(dailyTarget, dailySurplus, projectedBurn) {
-    const predBody = document.getElementById('prediction-body');
-    const tableHead = document.querySelector('.prediction-table thead tr');
-    if (tableHead) {
-        tableHead.innerHTML = `<th>Timeline</th><th>Liquid Balance</th><th>Projected Savings</th>`;
-    }
-
-    let rows = "";
-    let tempBalance = state.balance;
-    let tempSavings = state.generalSavings || 0; 
-    
-    const numPaydays = state.incomeSchedule.length || 1;
-    const amountPerPayday = state.income / numPaydays;
-    
-    for (let i = 1; i <= 7; i++) {
-        let date = new Date();
-        date.setDate(date.getDate() + i);
-        const dayOfWeek = date.getDay(); 
-        
-        if (state.incomeSchedule.includes(dayOfWeek)) {
-            tempBalance += amountPerPayday;
-            tempBalance -= projectedBurn;
-            if (dailySurplus > 0) {
-                tempSavings += dailySurplus;
-                tempBalance -= dailySurplus; 
-            }
-        }
-        
-        const balanceColor = tempBalance < 0 ? "var(--danger)" : "var(--text-main)";
-
-        rows += `
-            <tr class="table-row-hover hover-lift-slight">
-                <td>${date.toLocaleDateString('en-US', {weekday: 'short', month: 'short', day: 'numeric'})}</td>
-                <td style="color: ${balanceColor};">₱${tempBalance.toFixed(2)}</td>
-                <td style="color: var(--primary); font-weight: bold;">₱${tempSavings.toFixed(2)}</td>
-            </tr>`;
-    }
-    
-    predBody.innerHTML = rows;
 }
 
 function renderLedger() {
@@ -495,28 +547,15 @@ function initChart() {
         data: {
             labels: ['Sync'],
             datasets: [{
-                label: 'Asset Vector',
-                data: state.graphData,
-                borderColor: '#6366f1',
-                borderWidth: 3,
-                tension: 0.4, 
-                fill: true,
-                backgroundColor: gradient,
-                pointBackgroundColor: '#a855f7',
-                pointBorderWidth: 2,
-                pointRadius: 4,
-                pointHoverRadius: 6
+                label: 'Asset Vector', data: state.graphData, borderColor: '#6366f1',
+                borderWidth: 3, tension: 0.4, fill: true, backgroundColor: gradient,
+                pointBackgroundColor: '#a855f7', pointBorderWidth: 2, pointRadius: 4, pointHoverRadius: 6
             }]
         },
         options: { 
-            responsive: true, 
-            maintainAspectRatio: false, 
-            animation: { duration: 400, easing: 'easeOutQuart' },
+            responsive: true, maintainAspectRatio: false, animation: { duration: 400, easing: 'easeOutQuart' },
             plugins: { legend: { display: false } },
-            scales: {
-                x: { grid: { display: false } },
-                y: { grid: { color: 'rgba(0,0,0,0.05)' } }
-            }
+            scales: { x: { grid: { display: false } }, y: { grid: { color: 'rgba(0,0,0,0.05)' } } }
         }
     });
 }
