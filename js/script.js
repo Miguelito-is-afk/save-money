@@ -250,14 +250,6 @@ function executeVector(vector) {
     // CRITICAL: Save and refresh the UI
     save(); 
 
-    // --- ENHANCED LEARNING: Categorical + Temporal ---
-    const catName = analysis.icon;
-    if (state.metrics.categoryAverages[catName]) {
-        state.metrics.categoryAverages[catName].total += amount;
-        state.metrics.categoryAverages[catName].count += 1;
-        state.metrics.categoryAverages[catName].avg = state.metrics.categoryAverages[catName].total / state.metrics.categoryAverages[catName].count;
-    }
-
     const todayNum = new Date().getDay();
     state.metrics.dayOfWeekBurn[todayNum] = ((state.metrics.dayOfWeekBurn[todayNum] || 0) + amount) / 2;
 
