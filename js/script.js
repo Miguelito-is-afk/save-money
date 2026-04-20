@@ -34,12 +34,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // --- CORE NEURAL ROUTING (INCOME) ---
 function routeIncome(amount, sourceDesc) {
-    let amountForGoal = amount;
+    let amountForGoal = 0; // Initialize to 0 (Safe Default)
     let surplusForVault = 0;
 
-    if (state.goal.target > 0) {
+    // Strict Mission Validation: Must have a target > 0 and a valid date
+    const isMissionActive = state.goal && state.goal.target > 0 && state.goal.date;
+
+    if (isMissionActive) {
         const targetDate = new Date(state.goal.date);
         targetDate.setDate(targetDate.getDate() - state.goal.buffer);
+        
         const daysLeft = Math.max(1, Math.ceil((targetDate - new Date()) / (1000 * 60 * 60 * 24)));
         const remaining = state.goal.target - state.balance;
         const dailyReq = Math.max(0, remaining / daysLeft);
@@ -47,13 +51,17 @@ function routeIncome(amount, sourceDesc) {
         if (amount > dailyReq) {
             amountForGoal = dailyReq;
             surplusForVault = amount - dailyReq;
+        } else {
+            amountForGoal = amount;
+            surplusForVault = 0;
         }
     } else {
-        // If no goal, 100% goes to Vault (Wealth Building)
+        // --- VOID MODE: 100% Wealth Building ---
         surplusForVault = amount;
         amountForGoal = 0;
     }
 
+    // Apply to State
     if (amountForGoal > 0) {
         state.balance += amountForGoal;
         state.history.unshift({
@@ -67,7 +75,7 @@ function routeIncome(amount, sourceDesc) {
         state.generalSavings += surplusForVault;
         state.history.unshift({
             id: Date.now() + 1, date: new Date().toLocaleDateString(),
-            desc: `🏦 VAULT SURPLUS: ${sourceDesc}`, amount: surplusForVault,
+            desc: `🏦 VAULT ROUTE: ${sourceDesc}`, amount: surplusForVault,
             icon: '💎', spendType: 'income'
         });
     }
@@ -75,13 +83,13 @@ function routeIncome(amount, sourceDesc) {
     state.graphData.push(state.balance);
     state.streak++;
     
-    // UI Feedback
+    // UI Feedback logic
     if (surplusForVault > 0 && amountForGoal > 0) {
-        alert(`Cash Split Protocol Executed:\n₱${amountForGoal.toFixed(2)} -> Mission Assets\n₱${surplusForVault.toFixed(2)} -> Quantum Vault`);
+        alert(`Split Execution:\n₱${amountForGoal.toFixed(2)} -> Mission\n₱${surplusForVault.toFixed(2)} -> Vault`);
     } else if (surplusForVault > 0) {
-        alert(`₱${surplusForVault.toFixed(2)} routed to Quantum Vault. Wealth mode active.`);
+        alert(`₱${surplusForVault.toFixed(2)} secured in Quantum Vault.`);
     } else {
-        alert(`₱${amountForGoal.toFixed(2)} routed entirely to Mission Assets.`);
+        alert(`₱${amountForGoal.toFixed(2)} allocated to Mission.`);
     }
 }
 
@@ -285,10 +293,15 @@ function calculateAetherLogic() {
             generatePredictions(dailyReq, surplus, projectedBurn);
         }
     } else {
-        healthEl.innerText = "ACCUMULATING";
-        healthEl.style.color = "var(--success)";
-        adviceEl.innerHTML = `No mission vectors detected. 100% of incoming mass is being routed to the Quantum Vault.`;
-        document.getElementById('goal-name-display').innerText = "VOID";
+        // --- VOID / SOVEREIGN MODE UI ---
+        healthEl.innerText = "SOVEREIGN MODE"; 
+        healthEl.style.color = "#60a5fa"; // Cool Blue/Cyan for wealth building
+        
+        adviceEl.innerHTML = `Wealth-Building Mode Active. No mission vectors detected. <strong>100% of incoming mass</strong> is being hard-routed to the Quantum Vault to maximize long-term reserves.`;
+        
+        document.getElementById('goal-name-display').innerText = "NO MISSION DETECTED";
+        
+        // This tells the prediction table: Target is 0, All income is Surplus
         generatePredictions(0, dailyIncome, state.trueDailyBurn || 0);
     }
 }
@@ -318,18 +331,18 @@ function generatePredictions(dailyTarget, dailySurplus, baseBurn) {
         const projectedBurnForDay = learnedBurn > 0 ? learnedBurn : baseBurn;
         
         if (state.incomeSchedule.includes(dayOfWeek)) {
-            tempBalance += amountPerPayday;
-            tempBalance -= projectedBurnForDay;
-            
-            // Re-simulate routing logic
+            // Apply Income logic
             if (state.goal.target > 0) {
+                tempBalance += amountPerPayday;
+                tempBalance -= projectedBurnForDay;
                 if (amountPerPayday > dailyTarget) {
-                    tempBalance -= (amountPerPayday - dailyTarget); // Remove surplus from balance...
-                    tempSavings += (amountPerPayday - dailyTarget); // ...and add to vault
+                    tempBalance -= (amountPerPayday - dailyTarget); 
+                    tempSavings += (amountPerPayday - dailyTarget);
                 }
             } else {
-                 tempBalance -= amountPerPayday; 
+                 // VOID MODE: Income goes straight to savings, Balance only handles the Burn
                  tempSavings += amountPerPayday;
+                 tempBalance -= projectedBurnForDay;
             }
         } else {
             // Non-payday: just apply burn
