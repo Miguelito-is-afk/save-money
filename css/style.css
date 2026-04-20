@@ -522,9 +522,28 @@ td, th {
     transition: opacity var(--transition-smooth); 
 }
 
-.modal-overlay.active { 
-    display: flex; 
-    opacity: 1; 
+.modal-overlay.active {
+    display: flex !important; /* Forces the box to exist */
+    opacity: 1 !important;    /* Makes it visible */
+    pointer-events: auto;     /* Allows you to click buttons */
+}
+
+/* 3. Ensure the card inside scales up properly */
+.modal-overlay.active .modal-card {
+    display: flex !important; /* Forces the box to exist */
+    opacity: 1 !important;    /* Makes it visible */
+    pointer-events: auto;     /* Allows you to click buttons */
+}
+
+/* 4. Safety for the Vector selection buttons color */
+#vector-modal .btn-secondary {
+    border: 1px solid var(--accent) !important;
+    color: var(--accent) !important;
+    background: transparent;
+}
+
+#vector-modal .btn-secondary:hover {
+    background: rgba(168, 85, 247, 0.1);
 }
 
 .modal-card { 
