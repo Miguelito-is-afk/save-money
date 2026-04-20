@@ -1,4 +1,4 @@
-// AETHER CORE v5.0 - The "HIM" Update (Hyper-Predictive Neural Engine)
+// AETHER CORE v5.1 - The "HIM" Update (Hyper-Predictive Neural Engine)
 // Hardware-Optimized for Dimensity processing | Engineered by Miguel Bernados
 
 let state = JSON.parse(localStorage.getItem('aetherCoreData')) || {
@@ -29,8 +29,28 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('current-date').innerText = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     applySettings();
     initChart();
+    checkAutoSweep();
     updateUI();
 });
+
+// --- NEW: AUTO-SWEEP PROTOCOL (v5.1) ---
+function checkAutoSweep() {
+    const isMissionActive = state.goal && state.goal.target > 0 && state.goal.date;
+    
+    // If no mission exists but there's a balance, migrate it to the Vault
+    if (!isMissionActive && state.balance > 0) {
+        const sweepAmount = state.balance;
+        state.generalSavings += sweepAmount;
+        state.balance = 0;
+        
+        state.history.unshift({
+            id: Date.now(), date: new Date().toLocaleDateString(),
+            desc: "🧹 AUTO-SWEEP: Assets Secured to Vault", amount: sweepAmount,
+            icon: '🛡️', spendType: 'income'
+        });
+        console.log(`System: ₱${sweepAmount.toFixed(2)} migrated to Quantum Vault.`);
+    }
+}
 
 // --- CORE NEURAL ROUTING (INCOME) ---
 function routeIncome(amount, sourceDesc) {
@@ -411,7 +431,10 @@ function confirmFuel(received) {
 }
 
 function transferToMission() {
-    let amount = parseFloat(prompt(`Transfer from Quantum Vault (Current: ₱${state.generalSavings.toFixed(2)}) to Mission Assets:`, state.generalSavings));
+    const remaining = state.goal.target - state.balance;
+    let suggested = Math.min(state.generalSavings, remaining); // <--- ADD THIS
+    
+    let amount = parseFloat(prompt(`Transfer from Quantum Vault (Current: ₱${state.generalSavings.toFixed(2)}) to Mission Assets:`, suggested)); // <--- CHANGE state.generalSavings TO suggested
     if (amount > 0 && amount <= state.generalSavings) {
         state.generalSavings -= amount;
         state.balance += amount;
@@ -483,6 +506,8 @@ function redeemGoal() {
     });
     state.goal = { name: "VOID", target: 0, date: null, buffer: 0 };
     state.graphData.push(state.balance);
+    
+    checkAutoSweep();
     save();
     alert("System Overload: Mission Accomplished. Asset acquired.");
 }
@@ -495,6 +520,14 @@ document.getElementById('goal-form').addEventListener('submit', (e) => {
         date: document.getElementById('goal-date').value,
         buffer: parseInt(document.getElementById('goal-buffer').value) || 0
     };
+
+    // --- ADD THIS LOGIC ---
+    const remaining = state.goal.target - state.balance;
+    if (state.generalSavings >= remaining && remaining > 0) {
+        alert(`STRATEGIC INSIGHT: Your Quantum Vault already has enough mass to finance '${state.goal.name}' instantly.`);
+    }
+    // ----------------------
+
     save();
 });
 
@@ -512,6 +545,7 @@ function save() {
 }
 
 function updateUI() {
+    checkAutoSweep();
     document.getElementById('total-balance').innerText = `₱${state.balance.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
     const vaultEl = document.getElementById('savings-vault');
     if (vaultEl) vaultEl.innerText = `₱${(state.generalSavings || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}`;
