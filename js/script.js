@@ -56,38 +56,54 @@ function checkAutoSweep() {
     }
 }
 
+function toggleRoutingDropdown() {
+    const type = document.getElementById('type').value;
+    const routingContainer = document.getElementById('routing-container');
+    routingContainer.style.display = type === 'income' ? 'block' : 'none';
+}
+
 // --- CORE NEURAL ROUTING (INCOME) v5.3 ---
-function routeIncome(amount, sourceDesc) {
+function routeIncome(amount, sourceDesc, routeMode = 'auto') {
     let amountForGoal = 0;
     let surplusForVault = 0;
 
-    // 1. Mandatory Vault Tax (e.g., 20% always goes to savings first)
-    const vaultTaxRate = 0.20; 
-    const mandatoryVault = amount * vaultTaxRate;
-    let shareableAmount = amount - mandatoryVault;
+    if (routeMode === 'auto') {
+        // 1. Mandatory Vault Tax (e.g., 20% always goes to savings first)
+        const vaultTaxRate = 0.20; 
+        const mandatoryVault = amount * vaultTaxRate;
+        let shareableAmount = amount - mandatoryVault;
 
-    const isMissionActive = state.goal && state.goal.target > 0 && state.goal.date;
+        const isMissionActive = state.goal && state.goal.target > 0 && state.goal.date;
 
-    if (isMissionActive) {
-        const targetDate = new Date(state.goal.date);
-        targetDate.setDate(targetDate.getDate() - state.goal.buffer);
-        
-        const daysLeft = Math.max(1, Math.ceil((targetDate - new Date()) / (1000 * 60 * 60 * 24)));
-        const remaining = state.goal.target - state.balance;
-        const dailyReq = Math.max(0, remaining / daysLeft);
+        if (isMissionActive) {
+            const targetDate = new Date(state.goal.date);
+            targetDate.setDate(targetDate.getDate() - state.goal.buffer);
+            
+            const daysLeft = Math.max(1, Math.ceil((targetDate - new Date()) / (1000 * 60 * 60 * 24)));
+            const remaining = state.goal.target - state.balance;
+            const dailyReq = Math.max(0, remaining / daysLeft);
 
-        // Route the shareable amount to the goal up to the daily requirement
-        if (shareableAmount > dailyReq) {
-            amountForGoal = dailyReq;
-            surplusForVault = (shareableAmount - dailyReq) + mandatoryVault;
+            // Route the shareable amount to the goal up to the daily requirement
+            if (shareableAmount > dailyReq) {
+                amountForGoal = dailyReq;
+                surplusForVault = (shareableAmount - dailyReq) + mandatoryVault;
+            } else {
+                amountForGoal = shareableAmount;
+                surplusForVault = mandatoryVault;
+            }
         } else {
-            amountForGoal = shareableAmount;
-            surplusForVault = mandatoryVault;
+            // VOID MODE: 100% to Vault
+            surplusForVault = amount;
+            amountForGoal = 0;
         }
-    } else {
-        // VOID MODE: 100% to Vault
-        surplusForVault = amount;
+    } else if (routeMode === 'mission') {
+        // MANUAL OVERRIDE: 100% to Mission
+        amountForGoal = amount;
+        surplusForVault = 0;
+    } else if (routeMode === 'vault') {
+        // MANUAL OVERRIDE: 100% to Vault
         amountForGoal = 0;
+        surplusForVault = amount;
     }
 
     // Apply to State
@@ -95,7 +111,8 @@ function routeIncome(amount, sourceDesc) {
         state.balance += amountForGoal;
         state.history.unshift({
             id: Date.now(), date: new Date().toLocaleDateString(),
-            desc: `🎯 MISSION ROUTE: ${sourceDesc}`, amount: amountForGoal,
+            desc: routeMode === 'auto' ? `🎯 MISSION ROUTE: ${sourceDesc}` : `⚡ MANUAL LIQUID: ${sourceDesc}`, 
+            amount: amountForGoal,
             icon: '⚡', spendType: 'income'
         });
     }
@@ -104,7 +121,8 @@ function routeIncome(amount, sourceDesc) {
         state.generalSavings += surplusForVault;
         state.history.unshift({
             id: Date.now() + 1, date: new Date().toLocaleDateString(),
-            desc: `🏦 VAULT ROUTE: ${sourceDesc}`, amount: surplusForVault,
+            desc: routeMode === 'auto' ? `🏦 VAULT ROUTE: ${sourceDesc}` : `💎 MANUAL RESERVE: ${sourceDesc}`, 
+            amount: surplusForVault,
             icon: '💎', spendType: 'income'
         });
     }
@@ -117,7 +135,14 @@ function routeIncome(amount, sourceDesc) {
     save(); 
     updateUI(); 
     
-    alert(`Split Execution:\n🎯 Mission: ₱${amountForGoal.toFixed(0)}\n💎 Vault: ₱${surplusForVault.toFixed(0)}`);
+    // Dynamic alerts based on what mode fired
+    if (routeMode === 'auto') {
+        alert(`Split Execution:\n🎯 Mission: ₱${amountForGoal.toFixed(0)}\n💎 Vault: ₱${surplusForVault.toFixed(0)}`);
+    } else if (routeMode === 'mission') {
+        alert(`Manual Override:\n⚡ ₱${amount.toFixed(0)} injected into Mission Assets.`);
+    } else if (routeMode === 'vault') {
+        alert(`Manual Override:\n💎 ₱${amount.toFixed(0)} secured in Quantum Vault.`);
+    }
 }
 
 // --- V5 DYNAMIC ANOMALY & NLP CATEGORIZATION ---
@@ -170,11 +195,12 @@ document.getElementById('transaction-form').addEventListener('submit', (e) => {
     const amount = parseFloat(document.getElementById('amount').value);
     const type = document.getElementById('type').value;
     const desc = document.getElementById('desc').value;
+    const routeMode = document.getElementById('income-route').value; // Gets the route choice
 
     if (isNaN(amount) || amount <= 0) return; 
 
     if (type === 'income') {
-        routeIncome(amount, desc);
+        routeIncome(amount, desc, routeMode);
     } else {
         const analysis = detectCategoryAndAnomaly(desc, amount);
         pendingTx = { amount, desc, analysis };
@@ -191,6 +217,7 @@ document.getElementById('transaction-form').addEventListener('submit', (e) => {
         }, 10);
     }
     e.target.reset();
+    document.getElementById('routing-container').style.display = 'none'; // Reset UI
 });
 
 function closeVectorModal() {
