@@ -174,37 +174,35 @@ body {
 .orb {
     position: absolute;
     border-radius: 50%;
-    filter: blur(80px);
     opacity: 0.15;
     will-change: transform;
     pointer-events: none;
+    /* Removed filter: blur(80px); */
 }
 
-/* Orb 1: Primary Glow */
+/* Replace solid backgrounds with radial-gradients */
 .orb-1 {
     width: 400px;
     height: 400px;
-    background: var(--primary);
+    background: radial-gradient(circle, var(--primary) 0%, transparent 70%);
     top: -100px;
     right: -100px;
     animation: orbit 20s infinite linear;
 }
 
-/* Orb 2: Accent Glow */
 .orb-2 {
     width: 300px;
     height: 300px;
-    background: var(--accent);
+    background: radial-gradient(circle, var(--accent) 0%, transparent 70%);
     bottom: -50px;
     left: -50px;
     animation: orbit 25s infinite linear reverse;
 }
 
-/* Orb 3: Subtle Center Drift */
 .orb-3 {
     width: 250px;
     height: 250px;
-    background: var(--success);
+    background: radial-gradient(circle, var(--success) 0%, transparent 70%);
     top: 40%;
     left: 30%;
     opacity: 0.05;
