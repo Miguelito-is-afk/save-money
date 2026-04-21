@@ -305,6 +305,12 @@ body.dark-mode .orb {
 }
 
 /* --- TACTICAL ADVISORY PANEL --- */
+/* Add breathing room below the Fuel Panel when active */
+#fuel-panel {
+    margin-bottom: 2.5rem;
+    box-shadow: 0 15px 35px rgba(99, 102, 241, 0.15); /* Subtle primary-color shadow */
+}
+
 .advisory-card {
     background: linear-gradient(135deg, var(--primary), var(--accent));
     color: white; 
