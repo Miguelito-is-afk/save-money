@@ -602,10 +602,30 @@ document.getElementById('goal-form').addEventListener('submit', (e) => {
 });
 
 function editStat(type) {
-    let newVal = prompt(`Update Configuration [${type.toUpperCase()}]:`, type === 'balance' ? state.balance : state.income);
-    if (newVal !== null && !isNaN(newVal)) {
+    // Dynamically grab the current value based on the type requested. Default to 0 if missing.
+    let currentValue = state[type] !== undefined ? state[type] : 0;
+    
+    // Format the display name to look better in the prompt (e.g., GENERALSAVINGS -> VAULT RESERVES)
+    let displayName = type === 'generalSavings' ? 'VAULT RESERVES' : type.toUpperCase();
+    
+    let newVal = prompt(`Manual Override [${displayName}]:\nEnter new calibrated value:`, currentValue);
+    
+    // Ensure the user actually typed a number and didn't just hit cancel or leave it blank
+    if (newVal !== null && newVal.trim() !== "" && !isNaN(newVal)) {
         state[type] = parseFloat(newVal);
+        
+        // Log the manual override in the history ledger for tracking
+        state.history.unshift({
+            id: Date.now(), 
+            date: new Date().toLocaleDateString(),
+            desc: `🔧 OVERRIDE: ${displayName} Calibrated`, 
+            amount: parseFloat(newVal), 
+            icon: '⚙️', 
+            spendType: 'system'
+        });
+        
         save();
+        alert(`System Alert: ${displayName} successfully recalibrated to ₱${parseFloat(newVal).toFixed(0)}`);
     }
 }
 
