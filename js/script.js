@@ -678,9 +678,52 @@ function updateUI() {
     const level = Math.max(1, Math.floor(totalWealth / 500) + 1);
     document.getElementById('aura-level').innerText = `LVL ${level}`;
 
+    renderDeepMetrics();
     renderLedger();
     checkFuelPanel();
     if (chartInstance) updateChart();
+}
+
+function renderDeepMetrics() {
+    // 1. Render Category Burn Matrix
+    const matrixContainer = document.getElementById('category-matrix');
+    if (matrixContainer) {
+        const categories = Object.entries(state.metrics.categoryAverages)
+            .sort((a, b) => b[1].total - a[1].total); // Sort by highest spend
+            
+        if (categories.length === 0) {
+            matrixContainer.innerHTML = `<p style="color:var(--text-muted); font-size: 0.85rem;">Insufficient data. Waiting for neural inputs...</p>`;
+        } else {
+            matrixContainer.innerHTML = categories.map(([icon, data]) => `
+                <div style="background: rgba(99, 102, 241, 0.05); border: 1px solid rgba(99, 102, 241, 0.2); padding: 10px; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 1.5rem;">${icon}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 5px;">Avg: ₱${data.avg.toFixed(0)}</div>
+                    <strong style="color: var(--primary); font-size: 0.9rem;">₱${data.total.toFixed(0)}</strong>
+                </div>
+            `).join('');
+        }
+    }
+
+    // 2. Render Temporal Burn Radar (Bar Chart style)
+    const radarContainer = document.getElementById('temporal-radar');
+    if (radarContainer) {
+        const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+        const burns = days.map((_, i) => state.metrics.dayOfWeekBurn[i] || 0);
+        const maxBurn = Math.max(...burns, 1); // Avoid division by zero
+
+        radarContainer.innerHTML = burns.map((amount, index) => {
+            const heightPercent = (amount / maxBurn) * 100;
+            const barColor = amount === maxBurn && amount > 0 ? 'var(--danger)' : 'var(--primary)';
+            return `
+                <div style="display: flex; flex-direction: column; align-items: center; width: 12%;">
+                    <div style="height: 80px; width: 100%; display: flex; align-items: flex-end; justify-content: center;">
+                        <div style="width: 60%; background: ${barColor}; height: ${heightPercent}%; border-radius: 4px 4px 0 0; opacity: 0.8;"></div>
+                    </div>
+                    <span style="font-size: 0.7rem; color: var(--text-muted); margin-top: 5px;">${days[index]}</span>
+                </div>
+            `;
+        }).join('');
+    }
 }
 
 function renderLedger() {
@@ -697,7 +740,9 @@ function renderLedger() {
 }
 
 function updateChart() {
-    chartInstance.data.labels = state.history.slice(0, 15).reverse().map(i => i.date) || ['Sync'];
+    const recentDates = state.history.slice(0, 15).reverse().map(i => i.date);
+    chartInstance.data.labels = recentDates.length > 0 ? recentDates : ['Sync'];
+    
     chartInstance.data.datasets[0].data = state.graphData.slice(-15);
     chartInstance.update(); 
 }
