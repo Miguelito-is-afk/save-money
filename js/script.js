@@ -274,38 +274,65 @@ function executeVector(vector) {
     save(); 
 }
 
-// --- V5 ADVANCED BURN RATE (WEIGHTED VELOCITY) ---
+// --- V6 KINETIC BURN (EXPONENTIAL MOVING AVERAGE) ---
 function calculateBurnRate() {
     const now = Date.now();
     const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
-    const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
     
-    const recentExpenses = state.history.filter(t => t.amount < 0 && t.id > thirtyDaysAgo);
-    const ultraRecent = state.history.filter(t => t.amount < 0 && t.id > sevenDaysAgo);
+    // Filter and sort oldest to newest
+    const recentExpenses = state.history
+        .filter(t => t.amount < 0 && t.id > thirtyDaysAgo)
+        .sort((a, b) => a.id - b.id); 
     
     const burnText = document.getElementById('burn-rate-display');
     
     if (recentExpenses.length > 1) {
-        const totalBurn30 = recentExpenses.reduce((sum, t) => sum + Math.abs(t.amount), 0);
-        const oldest30 = Math.min(...recentExpenses.map(t => t.id));
-        const daysSpan30 = Math.max(1, (now - oldest30) / (1000 * 60 * 60 * 24));
-        const baseBurn = totalBurn30 / daysSpan30;
+        // Calculate EMA
+        const period = 7; // Give heavy weight to the last 7 transactions
+        const smoothing = 2 / (period + 1);
+        
+        let ema = Math.abs(recentExpenses[0].amount); // Start with the oldest
+        
+        for (let i = 1; i < recentExpenses.length; i++) {
+            const val = Math.abs(recentExpenses[i].amount);
+            ema = (val * smoothing) + (ema * (1 - smoothing));
+        }
 
-        const totalBurn7 = ultraRecent.reduce((sum, t) => sum + Math.abs(t.amount), 0);
-        const oldest7 = ultraRecent.length > 0 ? Math.min(...ultraRecent.map(t => t.id)) : now;
-        const daysSpan7 = Math.max(1, (now - oldest7) / (1000 * 60 * 60 * 24));
-        const velocityBurn = ultraRecent.length > 0 ? (totalBurn7 / daysSpan7) : baseBurn;
+        state.trueDailyBurn = ema; 
 
-        state.trueDailyBurn = (velocityBurn * 0.6) + (baseBurn * 0.4); 
+        // Deep Anchor Protocol Trigger
+        const safeLimit = state.income / 7;
+        let trendIcon = '<i class="fas fa-arrow-trend-down" style="color:var(--success)"></i>';
+        
+        if (state.trueDailyBurn > safeLimit) {
+            trendIcon = '<i class="fas fa-shield-alt" style="color:var(--danger)"></i>';
+            activateDeepAnchor(true); // Fire defense protocol
+        } else {
+            activateDeepAnchor(false);
+        }
 
-        const trendIcon = velocityBurn > baseBurn ? '<i class="fas fa-arrow-trend-up" style="color:var(--danger)"></i>' : '<i class="fas fa-arrow-trend-down" style="color:var(--success)"></i>';
-
-        burnText.innerHTML = `${trendIcon} Kinetic Burn: ₱${state.trueDailyBurn.toFixed(0)} / day`;
-        burnText.style.color = state.trueDailyBurn > (state.income / 7) ? '#fca5a5' : '#86efac';
+        burnText.innerHTML = `${trendIcon} Kinetic Burn (EMA): ₱${state.trueDailyBurn.toFixed(0)} / day`;
+        burnText.style.color = state.trueDailyBurn > safeLimit ? '#fca5a5' : '#86efac';
     } else {
         state.trueDailyBurn = 0;
         burnText.innerText = "System calibrating neural weights...";
         burnText.style.color = "var(--text-muted)";
+    }
+}
+
+// --- V6 DEEP ANCHOR DEFENSE PROTOCOL ---
+function activateDeepAnchor(isActive) {
+    const actionZone = document.getElementById('action-zone');
+    const adviceEl = document.getElementById('smart-advice');
+    
+    if (isActive) {
+        document.body.classList.add('lockdown-mode'); // Add a CSS class that tints the screen red
+        if (adviceEl) {
+            adviceEl.innerHTML += `<br><br><span style="color:var(--danger); font-weight:bold;">🚨 DEEP ANCHOR PROTOCOL ENGAGED. Non-essential asset routing disabled. Reduce kinetic burn immediately.</span>`;
+        }
+        // Optional: Disable transaction buttons for 'want' categories
+    } else {
+        document.body.classList.remove('lockdown-mode');
     }
 }
 
@@ -726,17 +753,30 @@ function renderDeepMetrics() {
     }
 }
 
+// --- V6 HARDWARE-OPTIMIZED RENDER ---
 function renderLedger() {
     const body = document.getElementById('history-body');
-    body.innerHTML = state.history.slice(0, 6).map(item => `
-        <tr class="table-row-hover hover-lift-slight">
+    const fragment = document.createDocumentFragment();
+    
+    state.history.slice(0, 6).forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = "table-row-hover hover-lift-slight";
+        
+        const amountColor = item.amount > 0 ? 'var(--success)' : 'var(--text-main)';
+        const amountPrefix = item.amount > 0 ? '+' : '';
+        
+        tr.innerHTML = `
             <td style="font-size: 1.2rem;">${item.icon || '💳'}</td>
             <td><strong>${item.desc}</strong><br><small style="color: var(--text-muted)">${item.date}</small></td>
-            <td style="text-align:right; font-weight: 700; color: ${item.amount > 0 ? 'var(--success)' : 'var(--text-main)'}">
-                ${item.amount > 0 ? '+' : ''}₱${Math.abs(item.amount).toFixed(0)}
+            <td style="text-align:right; font-weight: 700; color: ${amountColor}">
+                ${amountPrefix}₱${Math.abs(item.amount).toFixed(0)}
             </td>
-        </tr>
-    `).join('');
+        `;
+        fragment.appendChild(tr);
+    });
+    
+    body.innerHTML = ''; // Clear once
+    body.appendChild(fragment); // Paint once (Massive performance boost)
 }
 
 function updateChart() {
